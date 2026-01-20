@@ -1,0 +1,7 @@
+{
+  "name": "Academia do Servidor - SEDUC GO",
+  "description": "Um sistema completo de gestão para a academia dos servidores, incluindo controle de frequência, cadastro de alunos, bloqueios, horários de atividades e relatórios detalhados.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

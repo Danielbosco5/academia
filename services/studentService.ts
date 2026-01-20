@@ -41,17 +41,24 @@ export const studentService = {
       .select('*')
       .order('name', { ascending: true });
     
-    if (error) throw error;
+    if (error) {
+      console.error("Erro Supabase (getAll):", error.message);
+      throw error;
+    }
     return (data || []).map(mapFromDb);
   },
 
   async create(student: Student) {
+    // Removemos o ID temporário do frontend para o Supabase gerar um UUID
     const { data, error } = await supabase
       .from('students')
       .insert([mapToDb(student)])
       .select();
     
-    if (error) throw error;
+    if (error) {
+      console.error("Erro Supabase (create):", error.message);
+      throw error;
+    }
     return mapFromDb(data[0]);
   },
 
@@ -61,7 +68,10 @@ export const studentService = {
       .update({ blocked: isBlocked })
       .eq('cpf', cpf);
     
-    if (error) throw error;
+    if (error) {
+      console.error("Erro Supabase (toggleBlock):", error.message);
+      throw error;
+    }
   },
 
   async delete(id: string) {
@@ -70,6 +80,9 @@ export const studentService = {
       .delete()
       .eq('id', id);
     
-    if (error) throw error;
+    if (error) {
+      console.error("Erro Supabase (delete):", error.message);
+      throw error;
+    }
   }
 };

@@ -17,22 +17,23 @@ export interface User {
   cpf: string;
   role: UserRole;
   active: boolean;
+  password?: string; // Usado apenas na gestão
 }
 
 export interface Student {
   id: string;
   cpf: string;
   name: string;
-  department: string; // Lotação
+  department: string;
   phone: string;
   birthDate: string;
   age: number;
   gender: string;
   blocked: boolean;
-  onWaitlist?: boolean; // Se o aluno está na fila de espera
+  onWaitlist?: boolean;
   modality: Modality;
-  trainingDays?: string; // Dias da semana escolhidos
-  trainingTime?: string; // Horário escolhido
+  trainingDays?: string;
+  trainingTime?: string;
   createdAt: string;
 }
 
@@ -41,7 +42,7 @@ export interface AttendanceRecord {
   studentCpf: string;
   timestamp: string;
   hour: string;
-  photo?: string; // Base64 da foto capturada
+  photo?: string;
 }
 
 export interface DocumentItem {
@@ -49,7 +50,7 @@ export interface DocumentItem {
   title: string;
   fileName: string;
   uploadDate: string;
-  studentId?: string; // If it's a student specific document
+  studentId?: string;
 }
 
-export type View = 'home' | 'attendance' | 'add-student' | 'block-student' | 'documents' | 'student-documents' | 'reports' | 'schedules' | 'teachers' | 'students-list' | 'waitlist';
+export type View = 'home' | 'attendance' | 'add-student' | 'block-student' | 'documents' | 'student-documents' | 'reports' | 'schedules' | 'teachers' | 'students-list' | 'waitlist' | 'system-users';

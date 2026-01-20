@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Save, Phone, Building, Hash, Calendar, User, Clock, AlertTriangle, CalendarDays } from 'lucide-react';
+import { UserPlus, Save, Phone, Building, Hash, Calendar, User, Clock, AlertTriangle, CalendarDays, Loader2 } from 'lucide-react';
 import { Student, Modality } from '../types';
 
 interface StudentFormProps {
   onSave: (student: Student) => void;
   students: Student[];
   initialData?: Student;
+  isSaving?: boolean;
 }
 
-const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData }) => {
+const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData, isSaving }) => {
   const [formData, setFormData] = useState<Partial<Student>>(initialData || {
     cpf: '', name: '', department: '', phone: '', birthDate: '', age: 0, gender: 'Masculino',
     modality: Modality.ACADEMIA, trainingDays: 'Segunda, Quarta e Sexta', trainingTime: '', blocked: false
@@ -32,6 +33,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
     if (!formData.trainingTime) return alert('Por favor, selecione um horário.');
     
     onSave({
@@ -75,7 +77,8 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
             <label className="block text-sm font-bold text-gray-700 mb-2">Nome Completo</label>
             <input 
               required 
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
+              disabled={isSaving}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all disabled:opacity-50" 
               value={formData.name} 
               onChange={e => setFormData({...formData, name: e.target.value})} 
             />
@@ -85,8 +88,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
             <label className="block text-sm font-bold text-gray-700 mb-2">Lotação (Unidade/Gerência)</label>
             <input 
               required 
+              disabled={isSaving}
               placeholder="Ex: SEDUC / G.TI"
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all disabled:opacity-50" 
               value={formData.department} 
               onChange={e => setFormData({...formData, department: e.target.value})} 
             />
@@ -96,8 +100,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
             <label className="block text-sm font-bold text-gray-700 mb-2">CPF</label>
             <input 
               required 
+              disabled={isSaving}
               placeholder="000.000.000-00"
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all disabled:opacity-50" 
               value={formData.cpf} 
               onChange={e => setFormData({...formData, cpf: e.target.value})} 
             />
@@ -107,8 +112,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
             <label className="block text-sm font-bold text-gray-700 mb-2">WhatsApp / Telefone</label>
             <input 
               required 
+              disabled={isSaving}
               placeholder="(62) 99999-9999"
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all disabled:opacity-50" 
               value={formData.phone} 
               onChange={e => setFormData({...formData, phone: e.target.value})} 
             />
@@ -117,7 +123,8 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Sexo</label>
             <select 
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white transition-all"
+              disabled={isSaving}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white transition-all disabled:opacity-50"
               value={formData.gender}
               onChange={e => setFormData({...formData, gender: e.target.value})}
             >
@@ -131,8 +138,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
             <label className="block text-sm font-bold text-gray-700 mb-2">Data de Nascimento</label>
             <input 
               required
+              disabled={isSaving}
               type="date"
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all disabled:opacity-50" 
               value={formData.birthDate} 
               onChange={e => setFormData({...formData, birthDate: e.target.value})} 
             />
@@ -156,8 +164,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
                 <button 
                   key={mod} 
                   type="button" 
+                  disabled={isSaving}
                   onClick={() => setFormData({...formData, modality: mod})} 
-                  className={`px-6 py-2 rounded-full border-2 font-bold transition-all shadow-sm ${formData.modality === mod ? 'bg-emerald-600 border-emerald-600 text-white scale-105' : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-200'}`}
+                  className={`px-6 py-2 rounded-full border-2 font-bold transition-all shadow-sm disabled:opacity-50 ${formData.modality === mod ? 'bg-emerald-600 border-emerald-600 text-white scale-105' : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-200'}`}
                 >
                   {mod}
                 </button>
@@ -174,8 +183,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
                 <button 
                   key={days} 
                   type="button" 
+                  disabled={isSaving}
                   onClick={() => setFormData({...formData, trainingDays: days})} 
-                  className={`px-6 py-2 rounded-full border-2 font-bold transition-all shadow-sm ${formData.trainingDays === days ? 'bg-emerald-600 border-emerald-600 text-white scale-105' : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-200'}`}
+                  className={`px-6 py-2 rounded-full border-2 font-bold transition-all shadow-sm disabled:opacity-50 ${formData.trainingDays === days ? 'bg-emerald-600 border-emerald-600 text-white scale-105' : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-200'}`}
                 >
                   {days}
                 </button>
@@ -195,12 +205,13 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
                   <button 
                     key={time} 
                     type="button" 
+                    disabled={isSaving}
                     onClick={() => setFormData({...formData, trainingTime: time})} 
-                    className={`p-3 rounded-lg border-2 text-center transition-all shadow-sm ${formData.trainingTime === time ? 'bg-emerald-600 border-emerald-600 text-white ring-2 ring-emerald-100 scale-105' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-white hover:border-emerald-200'}`}
+                    className={`p-3 rounded-lg border-2 text-center transition-all shadow-sm disabled:opacity-50 ${formData.trainingTime === time ? 'bg-emerald-600 border-emerald-600 text-white ring-2 ring-emerald-100 scale-105' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-white hover:border-emerald-200'}`}
                   >
                     <div className="text-sm font-bold">{time}</div>
-                    <div className={`text-[10px] font-medium ${full ? 'text-white/80' : 'text-emerald-600'}`}>{occ}/10 vagas</div>
-                    {full && <div className="text-[10px] text-orange-200 font-black uppercase mt-1 leading-none">Fila de Espera</div>}
+                    <div className={`text-[10px] font-medium ${full ? (formData.trainingTime === time ? 'text-white/80' : 'text-orange-600') : 'text-emerald-600'}`}>{occ}/10 vagas</div>
+                    {full && <div className={`text-[10px] font-black uppercase mt-1 leading-none ${formData.trainingTime === time ? 'text-orange-200' : 'text-orange-600'}`}>Fila de Espera</div>}
                   </button>
                 );
               })}
@@ -210,8 +221,16 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
         </div>
 
         <div className="pt-6 border-t">
-          <button type="submit" className="w-full bg-emerald-600 text-white font-black py-4 rounded-xl hover:bg-emerald-700 transition-all shadow-lg hover:shadow-emerald-200 flex items-center justify-center gap-2 active:scale-[0.98]">
-            <Save size={20} /> Finalizar Cadastro de Matrícula
+          <button 
+            type="submit" 
+            disabled={isSaving}
+            className="w-full bg-emerald-600 text-white font-black py-4 rounded-xl hover:bg-emerald-700 transition-all shadow-lg hover:shadow-emerald-200 flex items-center justify-center gap-2 active:scale-[0.98] disabled:bg-emerald-400 disabled:cursor-not-allowed"
+          >
+            {isSaving ? (
+              <><Loader2 className="animate-spin" size={20} /> Processando...</>
+            ) : (
+              <><Save size={20} /> Finalizar Cadastro de Matrícula</>
+            )}
           </button>
         </div>
       </form>

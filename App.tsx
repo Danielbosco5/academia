@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Home, Users, ClipboardCheck, Ban, FileText, 
   Files, BarChart3, Clock, Menu, PlusCircle,
-  LogOut, ShieldCheck, UserCog, ListOrdered, X, Loader2
+  LogOut, ShieldCheck, UserCog, ListOrdered, X, Loader2, KeyRound
 } from 'lucide-react';
 import { View, Student, AttendanceRecord, DocumentItem, Modality, User, UserRole } from './types';
 import { studentService } from './services/studentService';
@@ -20,6 +20,7 @@ import TeacherManagement from './components/TeacherManagement';
 import StudentList from './components/StudentList';
 import Waitlist from './components/Waitlist';
 import Login from './components/Login';
+import SystemUsers from './components/SystemUsers';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('home');
@@ -27,15 +28,11 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  
-  const [teachers, setTeachers] = useState<User[]>([
-    { id: 't1', name: 'Prof. Ricardo Silva', email: 'ricardo@gestao.go.gov.br', cpf: '111.111.111-11', role: UserRole.TEACHER, active: true },
-    { id: 't2', name: 'Profa. Eliana Costa', email: 'eliana@gestao.go.gov.br', cpf: '222.222.222-22', role: UserRole.TEACHER, active: true },
-  ]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -46,8 +43,9 @@ const App: React.FC = () => {
       ]);
       setStudents(fetchedStudents);
       setAttendance(fetchedAttendance);
-    } catch (err) {
-      console.error("Erro ao carregar dados do Supabase:", err);
+    } catch (err: any) {
+      console.error("Erro ao carregar dados:", err);
+      // Evitamos o alert aqui para não travar a UI de login
     } finally {
       setIsLoading(false);
     }
@@ -92,28 +90,31 @@ const App: React.FC = () => {
     const isFull = activeInSlot.length >= 10;
     const studentWithStatus = { ...student, onWaitlist: isFull };
 
+    setIsSaving(true);
     try {
       const savedStudent = await studentService.create(studentWithStatus);
       setStudents(prev => [...prev, savedStudent]);
       
       if (isFull) {
-        alert(`AVISO: Turma lotada. Adicionado à FILA DE ESPERA.`);
+        alert(`AVISO: Turma lotada. Servidor adicionado à FILA DE ESPERA.`);
         handleNavigate('waitlist');
       } else {
         handleNavigate('students-list');
       }
-    } catch (err) {
-      alert("Erro ao salvar matrícula. Verifique o console.");
+    } catch (err: any) {
+      alert("ERRO AO SALVAR: " + (err.message || "Consulte o administrador."));
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const deleteStudent = async (id: string) => {
-    if (!confirm("Deseja realmente remover esta matrícula?")) return;
+    if (!confirm("Deseja realmente remover esta matrícula permanentemente?")) return;
     try {
       await studentService.delete(id);
       setStudents(p => p.filter(s => s.id !== id));
-    } catch (err) {
-      alert("Erro ao remover.");
+    } catch (err: any) {
+      alert("Erro ao remover: " + err.message);
     }
   };
 
@@ -123,28 +124,29 @@ const App: React.FC = () => {
     try {
       await studentService.toggleBlock(cpf, !student.blocked);
       setStudents(p => p.map(s => s.cpf === cpf ? {...s, blocked: !s.blocked} : s));
-    } catch (err) {
-      alert("Erro ao atualizar status.");
+    } catch (err: any) {
+      alert("Erro ao atualizar status: " + err.message);
     }
   };
 
   const recordAttendance = async (record: AttendanceRecord) => {
     try {
-      await attendanceService.record(record.studentCpf, record.hour, record.photo);
-      setAttendance(p => [record, ...p]);
-    } catch (err) {
-      alert("Erro ao gravar frequência.");
+      const saved = await attendanceService.record(record.studentCpf, record.hour, record.photo);
+      const recordWithId = { ...record, id: saved.id };
+      setAttendance(p => [recordWithId, ...p]);
+    } catch (err: any) {
+      alert("Erro ao gravar frequência: " + err.message);
     }
   };
 
   const menuItems = [
     { id: 'home', label: 'Início', icon: Home, roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { id: 'attendance', label: 'Frequência', icon: ClipboardCheck, roles: [UserRole.ADMIN, UserRole.TEACHER] },
+    { id: 'system-users', label: 'Gestão Acesso', icon: KeyRound, roles: [UserRole.ADMIN] },
     { id: 'add-student', label: 'Matrícula', icon: PlusCircle, roles: [UserRole.ADMIN] },
     { id: 'students-list', label: 'Alunos', icon: Users, roles: [UserRole.ADMIN] },
     { id: 'waitlist', label: 'Espera', icon: ListOrdered, roles: [UserRole.ADMIN] },
     { id: 'block-student', label: 'Bloqueios', icon: Ban, roles: [UserRole.ADMIN] },
-    { id: 'teachers', label: 'Equipe', icon: UserCog, roles: [UserRole.ADMIN] },
     { id: 'schedules', label: 'Horários', icon: Clock, roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { id: 'documents', label: 'Docs Gerais', icon: FileText, roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { id: 'student-documents', label: 'Docs Alunos', icon: Files, roles: [UserRole.ADMIN, UserRole.TEACHER] },
@@ -161,18 +163,18 @@ const App: React.FC = () => {
     if (isLoading) return (
       <div className="flex flex-col items-center justify-center h-64 text-emerald-600">
         <Loader2 className="animate-spin mb-4" size={48} />
-        <p className="font-bold uppercase tracking-widest text-xs">Sincronizando com Supabase...</p>
+        <p className="font-bold uppercase tracking-widest text-xs text-center px-4">Sincronizando ambiente seguro...</p>
       </div>
     );
 
     switch (currentView) {
       case 'home': return <Dashboard students={students} attendance={attendance} onNavigate={handleNavigate} user={currentUser} />;
       case 'attendance': return <Attendance students={students} attendance={attendance} onAddAttendance={recordAttendance} />;
-      case 'add-student': return <StudentForm onSave={addStudent} students={students} />;
+      case 'system-users': return <SystemUsers />;
+      case 'add-student': return <StudentForm onSave={addStudent} students={students} isSaving={isSaving} />;
       case 'students-list': return <StudentList students={students.filter(s => !s.onWaitlist)} onDelete={deleteStudent} isAdmin={currentUser.role === UserRole.ADMIN} />;
       case 'waitlist': return <Waitlist students={students.filter(s => s.onWaitlist)} onDelete={deleteStudent} />;
       case 'block-student': return <BlockManagement students={students} onToggleBlock={toggleStudentBlock} />;
-      case 'teachers': return <TeacherManagement teachers={teachers} onAddTeacher={(t) => setTeachers(p => [...p, t])} onRemoveTeacher={(id) => setTeachers(p => p.filter(t => t.id !== id))} />;
       case 'documents': return <Documents documents={documents.filter(d => !d.studentId)} setDocuments={setDocuments} />;
       case 'student-documents': return <StudentDocuments students={students} documents={documents.filter(d => !!d.studentId)} setDocuments={setDocuments} />;
       case 'reports': return <Reports students={students} attendance={attendance} />;
@@ -182,65 +184,74 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-100 font-sans text-gray-900">
+    <div className="min-h-screen flex bg-slate-50 font-sans text-slate-900">
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
 
       <aside className={`
         fixed inset-y-0 left-0 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:relative lg:translate-x-0 transition-transform duration-200 ease-in-out
-        w-64 bg-slate-900 text-white flex flex-col shadow-xl
+        lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out
+        w-64 bg-slate-900 text-white flex flex-col shadow-2xl
       `}>
-        <div className="p-6 border-b border-slate-800 flex items-center justify-between">
-          <h1 className="font-bold text-xl tracking-tight">Academia <span className="text-emerald-500">GO</span></h1>
-          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden"><X size={20} /></button>
+        <div className="p-8 border-b border-slate-800 flex items-center justify-between">
+          <h1 className="font-black text-xl tracking-tight">Academia <span className="text-emerald-500">GO</span></h1>
+          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-white"><X size={24} /></button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-4">
-          <ul className="space-y-1 px-3">
+        <nav className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar">
+          <ul className="space-y-1.5">
             {filteredMenu.map((item) => (
               <li key={item.id}>
                 <button
                   onClick={() => handleNavigate(item.id as View)}
-                  className={`w-full flex items-center p-3 rounded-lg transition-colors ${
-                    currentView === item.id ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  className={`w-full flex items-center p-3.5 rounded-2xl transition-all ${
+                    currentView === item.id 
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950' 
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
                   }`}
                 >
-                  <item.icon size={20} className="mr-3 shrink-0" />
-                  <span className="font-medium">{item.label}</span>
+                  <item.icon size={20} className="mr-3.5 shrink-0" />
+                  <span className="font-bold text-sm tracking-tight">{item.label}</span>
                 </button>
               </li>
             ))}
           </ul>
         </nav>
         
-        <div className="p-4 border-t border-slate-800">
-           <button onClick={handleLogout} className="w-full flex items-center p-3 text-slate-400 hover:text-white transition-colors">
-            <LogOut size={20} className="mr-3" />
-            <span className="font-medium">Sair</span>
+        <div className="p-6 border-t border-slate-800">
+           <button onClick={handleLogout} className="w-full flex items-center p-4 text-slate-400 hover:text-white hover:bg-red-500/10 rounded-2xl transition-all">
+            <LogOut size={20} className="mr-3.5" />
+            <span className="font-bold text-sm">Sair da Sessão</span>
           </button>
         </div>
       </aside>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 shrink-0">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-gray-100 rounded-lg"><Menu size={24} /></button>
-            <h2 className="text-lg font-bold text-gray-800 truncate">{menuItems.find(m => m.id === currentView)?.label || 'Sistema'}</h2>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-bold text-gray-700">{currentUser.name}</p>
-              <p className="text-xs text-emerald-600 font-bold uppercase tracking-tighter">{currentUser.role}</p>
+        <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-6 lg:px-10 shrink-0">
+          <div className="flex items-center gap-6">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2.5 hover:bg-slate-50 rounded-xl transition-colors lg:hidden">
+              <Menu size={26} className="text-slate-600" />
+            </button>
+            <div className="hidden lg:block">
+              <h2 className="text-xl font-black text-slate-800 tracking-tight leading-none">
+                {menuItems.find(m => m.id === currentView)?.label || 'Painel'}
+              </h2>
             </div>
-            <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center font-bold text-emerald-700 border-2 border-emerald-200">
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-black text-slate-800 leading-none">{currentUser.name}</p>
+              <p className="text-[10px] text-emerald-600 font-black uppercase tracking-widest mt-1">{currentUser.role}</p>
+            </div>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border-2 ${currentUser.role === UserRole.ADMIN ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
               {currentUser.name.charAt(0)}
             </div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <div className="flex-1 overflow-y-auto p-6 lg:p-10 custom-scrollbar bg-slate-50/50">
           <div className="max-w-6xl mx-auto">{renderView()}</div>
         </div>
       </main>

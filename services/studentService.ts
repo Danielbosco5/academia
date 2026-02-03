@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Student } from '../types';
 
 const mapFromDb = (row: any): Student => {
-  // Técnica de split para extrair a Turma da string do horário (Ex: "08h | Turma A")
+  // Extrai a Turma da string do horário (Ex: "08h | Turma A")
   const trainingValue = row.training_time || '';
   const [time, turma] = trainingValue.includes(' | ') 
     ? trainingValue.split(' | ') 
@@ -22,14 +22,14 @@ const mapFromDb = (row: any): Student => {
     onWaitlist: row.on_waitlist,
     modality: row.modality,
     trainingDays: row.training_days,
-    trainingTime: time,
-    turma: turma,
+    trainingTime: time.trim(),
+    turma: turma.trim(),
     createdAt: row.created_at
   };
 };
 
 const mapToDb = (student: Partial<Student>) => {
-  // Funde o horário com a turma para salvar em uma única coluna existente
+  // Combina Horário + Turma em uma única string para a coluna training_time
   const combinedTime = student.trainingTime && student.turma 
     ? `${student.trainingTime} | ${student.turma}` 
     : student.trainingTime;
@@ -47,7 +47,7 @@ const mapToDb = (student: Partial<Student>) => {
     modality: student.modality,
     training_days: student.trainingDays,
     training_time: combinedTime
-    // O campo 'turma' não é enviado individualmente para evitar erro de schema
+    // Não incluímos o campo 'turma' aqui pois ele não existe no schema do banco
   };
 };
 

@@ -1,20 +1,37 @@
 
 import React, { useState } from 'react';
-import { Search, Trash2, User, Building, Phone, ListOrdered, Clock, Info } from 'lucide-react';
+import { Search, Trash2, User, Building, Phone, ListOrdered, Clock, Info, Edit3, X, Loader2 } from 'lucide-react';
 import { Student } from '../types';
+import StudentForm from './StudentForm';
 
 interface WaitlistProps {
   students: Student[];
   onDelete: (id: string) => void;
+  onUpdate?: (student: Student) => Promise<void>;
 }
 
-const Waitlist: React.FC<WaitlistProps> = ({ students, onDelete }) => {
+const Waitlist: React.FC<WaitlistProps> = ({ students, onDelete, onUpdate }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const filteredStudents = students.filter(s => 
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     s.cpf.includes(searchTerm)
   );
+
+  const handleEditSave = async (updatedData: Student) => {
+    if (!onUpdate) return;
+    setIsUpdating(true);
+    try {
+      await onUpdate(updatedData);
+      setEditingStudent(null);
+    } catch (err) {
+      console.error("Falha ao atualizar servidor na fila:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   return (
     <div className="space-y-8 pb-12">
@@ -44,7 +61,7 @@ const Waitlist: React.FC<WaitlistProps> = ({ students, onDelete }) => {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-emerald-950 text-emerald-400 text-[10px] uppercase font-black tracking-[0.2em]">
-                <th className="p-6">Servidor / Identificação</th>
+                <th className="p-6">Posição / Identificação</th>
                 <th className="p-6">Unidade Lotação</th>
                 <th className="p-6">Pretendido</th>
                 <th className="p-6">Status Fila</th>
@@ -91,10 +108,17 @@ const Waitlist: React.FC<WaitlistProps> = ({ students, onDelete }) => {
                     </div>
                   </td>
                   <td className="p-6">
-                    <div className="flex justify-center">
+                    <div className="flex justify-center gap-2">
+                      <button 
+                        onClick={() => setEditingStudent(student)}
+                        className="p-3 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
+                        title="Editar Matrícula"
+                      >
+                        <Edit3 size={24} />
+                      </button>
                       <button 
                         onClick={() => onDelete(student.id)}
-                        className="p-3 text-emerald-200 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all hover:rotate-12 transform"
+                        className="p-3 text-slate-200 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all hover:rotate-12 transform"
                         title="Remover Servidor da Fila"
                       >
                         <Trash2 size={24} />
@@ -128,6 +152,43 @@ const Waitlist: React.FC<WaitlistProps> = ({ students, onDelete }) => {
           <p className="text-[11px] text-amber-700 font-medium">Ao excluir um aluno ativo, o primeiro servidor na fila de espera daquela mesma turma será habilitado automaticamente.</p>
         </div>
       </div>
+
+      {/* Modal de Edição */}
+      {editingStudent && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+            <div className="p-8 bg-orange-600 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-400 rounded-lg">
+                  <Edit3 size={20} />
+                </div>
+                <div>
+                  <h3 className="font-black uppercase tracking-widest text-sm">Gerenciar Servidor na Fila</h3>
+                  <p className="text-[10px] text-orange-100 font-bold uppercase tracking-widest">Mude horários ou ative a matrícula</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setEditingStudent(null)} 
+                className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+              <div className="mb-6 p-4 bg-orange-50 border border-orange-100 rounded-2xl text-orange-800 text-xs font-medium">
+                <strong>Dica:</strong> Se você mudar o horário para uma turma com vagas disponíveis e o sistema salvar sem o alerta de fila, o aluno será movido automaticamente para a lista de ativos.
+              </div>
+              <StudentForm 
+                initialData={editingStudent} 
+                onSave={handleEditSave} 
+                students={[]} // Passamos vazio para ignorar o cálculo de ocupação da própria fila se necessário ou pode-se passar a lista completa
+                isSaving={isUpdating}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -183,7 +183,7 @@ const App: React.FC = () => {
       case 'system-users': return <SystemUsers />;
       case 'add-student': return <StudentForm onSave={addStudent} students={students} isSaving={isSaving} />;
       case 'students-list': return <StudentList students={students.filter(s => !s.onWaitlist)} onDelete={deleteStudent} onUpdate={updateStudent} isAdmin={currentUser.role === UserRole.ADMIN} />;
-      case 'waitlist': return <Waitlist students={students.filter(s => s.onWaitlist)} onDelete={deleteStudent} />;
+      case 'waitlist': return <Waitlist students={students.filter(s => s.onWaitlist)} onDelete={deleteStudent} onUpdate={updateStudent} />;
       case 'block-student': return <BlockManagement students={students} onToggleBlock={toggleStudentBlock} />;
       case 'documents': return <Documents documents={documents.filter(d => !d.studentId)} setDocuments={setDocuments} />;
       case 'student-documents': return <StudentDocuments students={students} documents={documents.filter(d => !!d.studentId)} setDocuments={setDocuments} />;

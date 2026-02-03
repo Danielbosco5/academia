@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Save, Phone, Building, Hash, Calendar, User, Clock, AlertTriangle, CalendarDays, Loader2, Dumbbell } from 'lucide-react';
+import { UserPlus, Save, Phone, Building, Hash, Calendar, User, Clock, AlertTriangle, CalendarDays, Loader2, Dumbbell, LayoutGrid } from 'lucide-react';
 import { Student, Modality } from '../types';
 
 interface StudentFormProps {
@@ -13,7 +13,7 @@ interface StudentFormProps {
 const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData, isSaving }) => {
   const [formData, setFormData] = useState<Partial<Student>>(initialData || {
     cpf: '', name: '', department: '', phone: '', birthDate: '', age: 0, gender: 'Masculino',
-    modality: Modality.ACADEMIA, trainingDays: 'Segunda, Quarta e Sexta', trainingTime: '', blocked: false
+    modality: Modality.ACADEMIA, trainingDays: 'Segunda, Quarta e Sexta', trainingTime: '', turma: 'Turma A', blocked: false
   });
 
   useEffect(() => {
@@ -48,16 +48,18 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
       modality: formData.modality as Modality,
       trainingDays: formData.trainingDays,
       trainingTime: formData.trainingTime,
+      turma: formData.turma || 'Turma A',
       createdAt: formData.createdAt || new Date().toISOString()
     });
   };
 
-  const getOccupancy = (time: string) => 
+  const getOccupancy = (time: string, turma: string) => 
     students.filter(s => 
       !s.onWaitlist && 
       s.modality === formData.modality && 
       s.trainingDays === formData.trainingDays && 
-      s.trainingTime === time
+      s.trainingTime === time &&
+      (s.turma === turma || (!s.turma && turma === 'Turma A'))
     ).length;
 
   const dayOptions = ['Segunda, Quarta e Sexta', 'Terça e Quinta'];
@@ -126,14 +128,29 @@ const StudentForm: React.FC<StudentFormProps> = ({ onSave, students, initialData
             </div>
           </div>
 
-          <div className="md:col-span-3 space-y-4 pt-4 border-t">
-            <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
-              <Clock size={18} className="text-emerald-600" /> Horário
-            </label>
+          <div className="md:col-span-3 space-y-6 pt-4 border-t">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                <Clock size={18} className="text-emerald-600" /> Horário e Turma
+              </label>
+              
+              <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
+                {['Turma A', 'Turma B'].map(t => (
+                  <button 
+                    key={t}
+                    type="button"
+                    onClick={() => setFormData({...formData, turma: t})}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${formData.turma === t ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
               {(formData.modality === Modality.ACADEMIA ? ['06h','07h','11h','12h','13h','17h','18h','19h'] : ['07h10','11h10','17h10','18h']).map(time => {
-                const occ = getOccupancy(time);
-                // Atualizado limite para 12 alunos por turma
+                const occ = getOccupancy(time, formData.turma || 'Turma A');
                 const full = occ >= 12;
                 return (
                   <button key={time} type="button" disabled={isSaving} onClick={() => setFormData({...formData, trainingTime: time})} className={`p-3 rounded-lg border-2 text-center transition-all ${formData.trainingTime === time ? 'bg-emerald-600 border-emerald-600 text-white ring-2 ring-emerald-100' : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-emerald-200'}`}>

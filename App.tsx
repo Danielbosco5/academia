@@ -83,10 +83,10 @@ const App: React.FC = () => {
       !s.onWaitlist && 
       s.modality === student.modality && 
       s.trainingDays === student.trainingDays && 
-      s.trainingTime === student.trainingTime
+      s.trainingTime === student.trainingTime &&
+      s.turma === student.turma
     );
 
-    // Atualizado limite para 12 alunos por turma
     const isFull = activeInSlot.length >= 12;
     const studentWithStatus = { ...student, onWaitlist: isFull };
 
@@ -188,7 +188,7 @@ const App: React.FC = () => {
       case 'documents': return <Documents documents={documents.filter(d => !d.studentId)} setDocuments={setDocuments} />;
       case 'student-documents': return <StudentDocuments students={students} documents={documents.filter(d => !!d.studentId)} setDocuments={setDocuments} />;
       case 'reports': return <Reports students={students} attendance={attendance} />;
-      case 'schedules': return <Schedules />;
+      case 'schedules': return <Schedules students={students} />;
       default: return <Dashboard students={students} attendance={attendance} onNavigate={handleNavigate} user={currentUser} />;
     }
   };

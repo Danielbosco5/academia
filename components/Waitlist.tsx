@@ -24,6 +24,9 @@ const Waitlist: React.FC<WaitlistProps> = ({ students, onDelete, onUpdate }) => 
     if (!onUpdate) return;
     setIsUpdating(true);
     try {
+      // Importante: Ao editar, se o usuário desmarcar a flag de espera (se implementado) 
+      // ou mudar para um horário com vaga, o App.tsx tratará a lógica de promoção se necessário.
+      // Aqui apenas enviamos os dados atualizados.
       await onUpdate(updatedData);
       setEditingStudent(null);
     } catch (err) {
@@ -97,7 +100,7 @@ const Waitlist: React.FC<WaitlistProps> = ({ students, onDelete, onUpdate }) => 
                         {student.modality}
                       </span>
                       <p className="text-[10px] text-emerald-700 font-black uppercase tracking-tighter italic">
-                        {student.trainingDays} - {student.trainingTime}
+                        {student.trainingDays} - {student.trainingTime} {student.turma && `(${student.turma})`}
                       </p>
                     </div>
                   </td>

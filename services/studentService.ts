@@ -2,37 +2,54 @@
 import { supabase } from '../lib/supabase';
 import { Student } from '../types';
 
-const mapFromDb = (row: any): Student => ({
-  id: row.id,
-  cpf: row.cpf,
-  name: row.name,
-  department: row.department,
-  phone: row.phone,
-  birthDate: row.birth_date,
-  age: row.age,
-  gender: row.gender,
-  blocked: row.blocked,
-  onWaitlist: row.on_waitlist,
-  modality: row.modality,
-  trainingDays: row.training_days,
-  trainingTime: row.training_time,
-  createdAt: row.created_at
-});
+const mapFromDb = (row: any): Student => {
+  // Técnica de split para extrair a Turma da string do horário (Ex: "08h | Turma A")
+  const trainingValue = row.training_time || '';
+  const [time, turma] = trainingValue.includes(' | ') 
+    ? trainingValue.split(' | ') 
+    : [trainingValue, 'Turma A'];
 
-const mapToDb = (student: Partial<Student>) => ({
-  cpf: student.cpf,
-  name: student.name,
-  department: student.department,
-  phone: student.phone,
-  birth_date: student.birthDate,
-  age: student.age,
-  gender: student.gender,
-  blocked: student.blocked,
-  on_waitlist: student.onWaitlist,
-  modality: student.modality,
-  training_days: student.trainingDays,
-  training_time: student.trainingTime
-});
+  return {
+    id: row.id,
+    cpf: row.cpf,
+    name: row.name,
+    department: row.department,
+    phone: row.phone,
+    birthDate: row.birth_date,
+    age: row.age,
+    gender: row.gender,
+    blocked: row.blocked,
+    onWaitlist: row.on_waitlist,
+    modality: row.modality,
+    trainingDays: row.training_days,
+    trainingTime: time,
+    turma: turma,
+    createdAt: row.created_at
+  };
+};
+
+const mapToDb = (student: Partial<Student>) => {
+  // Funde o horário com a turma para salvar em uma única coluna existente
+  const combinedTime = student.trainingTime && student.turma 
+    ? `${student.trainingTime} | ${student.turma}` 
+    : student.trainingTime;
+
+  return {
+    cpf: student.cpf,
+    name: student.name,
+    department: student.department,
+    phone: student.phone,
+    birth_date: student.birthDate,
+    age: student.age,
+    gender: student.gender,
+    blocked: student.blocked,
+    on_waitlist: student.onWaitlist,
+    modality: student.modality,
+    training_days: student.trainingDays,
+    training_time: combinedTime
+    // O campo 'turma' não é enviado individualmente para evitar erro de schema
+  };
+};
 
 export const studentService = {
   async getAll() {

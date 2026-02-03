@@ -1,114 +1,156 @@
 
-import React from 'react';
-import { Calendar, Clock, MapPin, Info } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Calendar, Clock, MapPin, Info, Users, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Student, Modality } from '../types';
 
-const Schedules: React.FC = () => {
-  const academiaTimes = ['06h', '07h', '11h', '12h', '13h', '16h (Servidores da Limpeza)', '17h', '18h', '19h'];
-  const specificActivityTimes = ['07h10 - 07h40', '11h10 - 11h40', '17h10 - 17h40', '18h - 18h30'];
+interface SchedulesProps {
+  students: Student[];
+}
+
+const Schedules: React.FC<SchedulesProps> = ({ students }) => {
+  const getOccupancy = (modality: Modality, days: string, time: string, turma: string) => {
+    return students.filter(s => 
+      !s.onWaitlist && 
+      s.modality === modality && 
+      s.trainingDays === days && 
+      s.trainingTime.startsWith(time.split(' ')[0]) &&
+      (s.turma === turma || (!s.turma && turma === 'Turma A'))
+    ).length;
+  };
 
   const activities = [
     {
-      name: 'Academia',
-      color: 'bg-blue-600',
+      name: Modality.ACADEMIA,
+      color: 'bg-emerald-600',
       description: 'Treinamento de força e musculação.',
       schedule: [
-        { days: 'Segunda, Quarta e Sexta', times: academiaTimes },
-        { days: 'Terça e Quinta', times: academiaTimes },
+        { days: 'Segunda, Quarta e Sexta', times: ['06h', '07h', '11h', '12h', '13h', '16h (Limpeza)', '17h', '18h', '19h'] },
+        { days: 'Terça e Quinta', times: ['06h', '07h', '11h', '12h', '13h', '17h', '18h', '19h'] },
       ]
     },
     {
-      name: 'Funcional',
-      color: 'bg-emerald-600',
+      name: Modality.FUNCIONAL,
+      color: 'bg-blue-600',
       description: 'Exercícios dinâmicos de alta intensidade.',
       schedule: [
-        { days: 'Segunda, Quarta e Sexta', times: specificActivityTimes },
+        { days: 'Segunda, Quarta e Sexta', times: ['07h10', '11h10', '17h10', '18h'] },
       ]
     },
     {
-      name: 'Dança',
+      name: Modality.DANCA,
       color: 'bg-purple-600',
       description: 'Ritmos variados e expressão corporal.',
       schedule: [
-        { days: 'Terça e Quinta', times: specificActivityTimes },
+        { days: 'Terça e Quinta', times: ['07h10', '11h10', '17h10', '18h'] },
       ]
     }
   ];
 
   return (
     <div className="space-y-8 pb-12">
-      <div className="flex flex-col md:flex-row items-center justify-between bg-white p-6 rounded-2xl border border-gray-200 shadow-sm gap-4">
-        <div className="flex items-center gap-4">
-          <div className="bg-orange-100 text-orange-600 p-3 rounded-xl">
-            <Calendar size={24} />
+      {/* Header Informativo */}
+      <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="p-4 bg-emerald-500 rounded-2xl shadow-lg shadow-emerald-500/20">
+              <Calendar size={32} />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black uppercase tracking-tight">Grade de Turmas</h3>
+              <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Capacidade: 12 Alunos por Subturma (A/B)</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-gray-800">Grade de Horários</h3>
-            <p className="text-gray-500">Quadro oficial sincronizado com o sistema de matrículas.</p>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10">
+              <Clock size={16} className="text-emerald-400" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Fluxo: 06:00 - 20:00</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10">
+              <MapPin size={16} className="text-emerald-400" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Espaço Fitness SEDUC</span>
+            </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <span className="flex items-center gap-1 text-sm bg-gray-100 px-3 py-1 rounded-full text-gray-600">
-            <Clock size={14} /> Ref: 06:00h - 19:00h
-          </span>
-          <span className="flex items-center gap-1 text-sm bg-gray-100 px-3 py-1 rounded-full text-gray-600">
-            <MapPin size={14} /> Espaço Fitness
-          </span>
-        </div>
+        <div className="absolute right-[-20px] top-[-20px] w-64 h-64 bg-emerald-500/10 rounded-full blur-[100px]" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* Grid de Modalidades */}
+      <div className="space-y-12">
         {activities.map((activity) => (
-          <div key={activity.name} className="bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden group flex flex-col">
-            <div className={`${activity.color} p-6 text-white`}>
-              <h4 className="text-2xl font-bold flex items-center justify-between mb-1">
-                {activity.name}
-                <Clock className="opacity-40 group-hover:rotate-12 transition-transform" />
-              </h4>
-              <p className="text-white/70 text-xs font-medium">{activity.description}</p>
+          <section key={activity.name} className="space-y-6">
+            <div className="flex items-center gap-3 px-2">
+              <div className={`w-3 h-10 rounded-full ${activity.color}`} />
+              <div>
+                <h4 className="text-xl font-black text-slate-800 uppercase tracking-tighter leading-none">{activity.name}</h4>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{activity.description}</p>
+              </div>
             </div>
-            
-            <div className="p-6 space-y-8 flex-1">
-              {activity.schedule.map((item, idx) => (
-                <div key={idx} className="space-y-4">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50 pb-2">{item.days}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {item.times.map(time => {
-                      const isSpecial = time.includes('Servidores');
-                      return (
-                        <span 
-                          key={time} 
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-default border ${
-                            isSpecial 
-                            ? 'bg-amber-50 text-amber-700 border-amber-200 italic flex items-center gap-1 w-full justify-center mt-2' 
-                            : `bg-gray-50 border-gray-100 text-gray-700 hover:border-gray-300`
-                          }`}
-                        >
-                          {isSpecial && <Info size={12} />}
-                          {time}
-                        </span>
-                      );
-                    })}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {activity.schedule.map((slot, idx) => (
+                <div key={idx} className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
+                  <div className="p-5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{slot.days}</span>
+                    <span className="bg-white px-3 py-1 rounded-lg border border-slate-200 text-[9px] font-black text-slate-400 uppercase">
+                      {slot.times.length} Horários
+                    </span>
+                  </div>
+                  
+                  <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {slot.times.map(time => (
+                      <div key={time} className="space-y-4">
+                        <div className="flex items-center gap-2 px-1">
+                          <p className="text-sm font-black text-slate-800 leading-none">{time}</p>
+                          <div className="h-[1px] flex-1 bg-slate-100"></div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                          {['Turma A', 'Turma B'].map(turma => {
+                            const count = getOccupancy(activity.name as Modality, slot.days, time, turma);
+                            const isFull = count >= 12;
+                            const percentage = (count / 12) * 100;
+                            
+                            return (
+                              <div key={turma} className={`p-3 rounded-xl border transition-all ${isFull ? 'bg-orange-50/50 border-orange-100' : 'bg-slate-50/50 border-slate-100'}`}>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-[9px] font-black uppercase text-slate-500">{turma}</span>
+                                  <span className={`text-[10px] font-bold ${isFull ? 'text-orange-600' : 'text-emerald-600'}`}>
+                                    {count}/12
+                                  </span>
+                                </div>
+                                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full transition-all duration-700 ${isFull ? 'bg-orange-500' : 'bg-emerald-500'}`}
+                                    style={{ width: `${Math.min(percentage, 100)}%` }}
+                                  />
+                                </div>
+                                {isFull && (
+                                  <p className="text-[8px] font-black text-orange-600 uppercase mt-1.5 text-right tracking-tighter">ESPERA ATIVA</p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
-            
-            <div className="p-6 bg-gray-50 border-t border-gray-100">
-              <button className="w-full text-xs font-bold text-gray-500 hover:text-blue-600 transition-colors uppercase tracking-widest">
-                Baixar Quadro PDF
-              </button>
-            </div>
-          </div>
+          </section>
         ))}
       </div>
 
-      {/* Extra Info */}
-      <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 flex items-start gap-4">
-        <Clock className="text-blue-500 flex-shrink-0" size={24} />
-        <div>
-          <h5 className="font-bold text-blue-800 mb-1">Observação de Funcionamento</h5>
-          <p className="text-sm text-blue-700 leading-relaxed">
-            As atividades de <strong>Academia</strong> funcionam de segunda a sexta. As modalidades de <strong>Funcional</strong> e <strong>Dança</strong> possuem dias fixos conforme indicado acima. O horário das 16h na Academia é reservado exclusivamente para os <strong>servidores da limpeza</strong> realizarem seus exercícios físicos.
+      {/* Informativo de Reservas Especiais */}
+      <div className="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-100 flex flex-col md:flex-row items-start gap-6 shadow-xl shadow-emerald-900/5">
+        <div className="p-4 bg-white rounded-2xl text-emerald-600 shadow-sm border border-emerald-100">
+          <Info size={28} />
+        </div>
+        <div className="flex-1">
+          <h5 className="font-black text-emerald-900 uppercase text-sm tracking-tight mb-2">Protocolo de Subturmas</h5>
+          <p className="text-xs text-emerald-800/70 leading-relaxed font-medium">
+            Cada horário (ex: 07h) é composto por duas turmas independentes: <strong>Turma A</strong> e <strong>Turma B</strong>. 
+            Cada uma possui limite estrito de <strong>12 servidores</strong>. Ao realizar a matrícula, o sistema valida a ocupação da turma específica escolhida. Alunos matriculados antes da implementação desta subdivisão foram alocados automaticamente na Turma A.
           </p>
         </div>
       </div>

@@ -34,6 +34,7 @@ export interface Student {
   modality: Modality;
   trainingDays?: string;
   trainingTime?: string;
+  turma?: string; // Turma A ou Turma B
   createdAt: string;
 }
 

@@ -4,20 +4,28 @@ import { User, UserRole } from '../types';
 
 export const userService = {
   async getAll() {
-    const { data, error } = await supabase
-      .from('system_users')
-      .select('*')
-      .order('name', { ascending: true });
-    
-    if (error) throw error;
-    return (data || []).map(row => ({
-      id: row.id,
-      name: row.name,
-      email: row.email,
-      cpf: row.cpf,
-      role: row.role as UserRole,
-      active: row.active
-    }));
+    try {
+      const { data, error } = await supabase
+        .from('system_users')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) {
+        if (error.code === '42P01') return [];
+        throw error;
+      }
+      return (data || []).map(row => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        cpf: row.cpf,
+        role: row.role as UserRole,
+        active: row.active
+      }));
+    } catch (err) {
+      console.error("userService.getAll failed:", err);
+      return [];
+    }
   },
 
   async authenticate(email: string, password: string) {
@@ -29,7 +37,10 @@ export const userService = {
       .eq('active', true)
       .single();
     
-    if (error || !data) throw new Error("E-mail ou senha incorretos.");
+    if (error || !data) {
+      console.error("Auth error:", error);
+      throw new Error("E-mail ou senha incorretos.");
+    }
     return {
       id: data.id,
       name: data.name,
@@ -47,7 +58,7 @@ export const userService = {
         name: user.name,
         email: user.email,
         cpf: user.cpf,
-        password: user.password || '123456', // senha padrão inicial
+        password: user.password || '123456',
         role: user.role,
         active: true
       }])

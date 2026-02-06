@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Home, Users, ClipboardCheck, Ban, FileText, 
   Files, BarChart3, Clock, Menu, PlusCircle,
-  LogOut, ShieldCheck, UserCog, ListOrdered, X, Loader2, KeyRound
+  LogOut, ShieldCheck, UserCog, ListOrdered, X, Loader2, KeyRound, AlertTriangle
 } from 'lucide-react';
 import { View, Student, AttendanceRecord, DocumentItem, Modality, User, UserRole } from './types';
 import { studentService } from './services/studentService';
@@ -30,6 +30,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
@@ -37,17 +38,19 @@ const App: React.FC = () => {
 
   const loadData = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const [fetchedStudents, fetchedAttendance, fetchedDocuments] = await Promise.all([
-        studentService.getAll(),
-        attendanceService.getToday(),
-        documentService.getAll()
+        studentService.getAll().catch(() => []),
+        attendanceService.getToday().catch(() => []),
+        documentService.getAll().catch(() => [])
       ]);
       setStudents(fetchedStudents);
       setAttendance(fetchedAttendance);
       setDocuments(fetchedDocuments);
     } catch (err: any) {
-      console.error("Erro ao carregar dados:", err);
+      console.error("Erro crítico na carga de dados:", err);
+      setLoadError("Erro ao sincronizar dados. Verifique a conexão.");
     } finally {
       setIsLoading(false);
     }
@@ -199,6 +202,15 @@ const App: React.FC = () => {
       </div>
     );
 
+    if (loadError) return (
+      <div className="p-10 bg-red-50 rounded-3xl border border-red-100 text-center space-y-4">
+        <AlertTriangle className="mx-auto text-red-500" size={48} />
+        <h3 className="font-black text-red-900 uppercase">Falha na Sincronização</h3>
+        <p className="text-red-700 font-medium text-sm">{loadError}</p>
+        <button onClick={loadData} className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold uppercase text-xs">Tentar Novamente</button>
+      </div>
+    );
+
     switch (currentView) {
       case 'home': return <Dashboard students={students} attendance={attendance} onNavigate={handleNavigate} user={currentUser} />;
       case 'attendance': return <Attendance students={students} attendance={attendance} onAddAttendance={recordAttendance} />;
@@ -231,7 +243,7 @@ const App: React.FC = () => {
           <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-white"><X size={24} /></button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar">
+        <nav className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar text-white">
           <ul className="space-y-1.5">
             {filteredMenu.map((item) => (
               <li key={item.id}>

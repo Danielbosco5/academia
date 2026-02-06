@@ -4,21 +4,29 @@ import { AttendanceRecord } from '../types';
 
 export const attendanceService = {
   async getToday() {
-    const today = new Date().toISOString().split('T')[0];
-    const { data, error } = await supabase
-      .from('attendance_records')
-      .select('*')
-      .gte('timestamp', `${today}T00:00:00`)
-      .order('timestamp', { ascending: false });
-    
-    if (error) throw error;
-    return (data || []).map(row => ({
-      id: row.id,
-      studentCpf: row.student_cpf,
-      timestamp: row.timestamp,
-      hour: row.hour,
-      photo: row.photo_url
-    }));
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select('*')
+        .gte('timestamp', `${today}T00:00:00`)
+        .order('timestamp', { ascending: false });
+      
+      if (error) {
+        if (error.code === '42P01') return [];
+        throw error;
+      }
+      return (data || []).map(row => ({
+        id: row.id,
+        studentCpf: row.student_cpf,
+        timestamp: row.timestamp,
+        hour: row.hour,
+        photo: row.photo_url
+      }));
+    } catch (err) {
+      console.error("attendanceService.getToday failed:", err);
+      return [];
+    }
   },
 
   async record(studentCpf: string, hour: string, photo?: string) {

@@ -12,7 +12,8 @@ export const documentService = {
     if (error) {
       console.error("Erro Supabase (documentService.getAll):", error.message);
       // Retornar array vazio se a tabela não existir ou erro de permissão para não quebrar o app
-      if (error.code === '42P01' || error.status === 404) return []; 
+      const errorStatus = 'status' in error ? (error as { status?: number }).status : undefined;
+      if (error.code === '42P01' || errorStatus === 404) return []; 
       throw error;
     }
     

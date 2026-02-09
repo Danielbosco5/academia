@@ -13,7 +13,7 @@ const Schedules: React.FC<SchedulesProps> = ({ students }) => {
       !s.onWaitlist && 
       s.modality === modality && 
       s.trainingDays === days && 
-      (s.trainingTime || '').startsWith(time.split(' ')[0]) &&
+      (s.trainingTime?.startsWith(time.split(' ')[0]) ?? false) &&
       (s.turma === turma || (!s.turma && turma === 'Turma A'))
     ).length;
   };

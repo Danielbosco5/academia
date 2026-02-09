@@ -1,16 +1,14 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Fallback robusto para evitar erros de compilação se as variáveis não estiverem no .env
-const getEnv = (key: string, fallback: string) => {
-  try {
-    return (import.meta as any).env?.[key] || fallback;
-  } catch {
-    return fallback;
-  }
-};
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL', 'https://vdfgjczuibnhbyxojzzn.supabase.co');
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkZmdqY3p1aWJuaGJ5eG9qenpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MzY3OTAsImV4cCI6MjA4NDUxMjc5MH0.L71qElUijJA3xJzzsZo96MEwgwdVF4M80LxFy_7tgHc');
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    'Variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são obrigatórias. ' +
+    'Configure-as no painel do Vercel (Settings > Environment Variables) ou em um arquivo .env.local'
+  );
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

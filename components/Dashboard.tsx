@@ -61,7 +61,7 @@ const Dashboard: React.FC<DashboardProps> = ({ students, attendance, onNavigate,
       </div>
 
       {/* Stats Grid */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${filteredStats.length} gap-4 md:gap-6`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${filteredStats.length <= 2 ? 'lg:grid-cols-2' : filteredStats.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-4 md:gap-6`}>
         {filteredStats.map((stat, idx) => (
           <div 
             key={idx} 
@@ -99,7 +99,7 @@ const Dashboard: React.FC<DashboardProps> = ({ students, attendance, onNavigate,
                 return (
                   <div key={record.id} className="p-4 flex items-center space-x-3 hover:bg-emerald-50/50 transition-colors border-b border-gray-50 last:border-0">
                     <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-black shrink-0 overflow-hidden">
-                      {record.photo ? <img src={record.photo} className="w-full h-full object-cover" /> : student?.name.charAt(0)}
+                      {record.photo ? <img src={record.photo} alt="Foto do servidor" className="w-full h-full object-cover" /> : student?.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-gray-800 text-sm truncate">{student?.name || 'Servidor'}</p>

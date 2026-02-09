@@ -1,6 +1,6 @@
 
-import React, { useMemo } from 'react';
-import { Calendar, Clock, MapPin, Info, Users, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React from 'react';
+import { Calendar, Clock, MapPin, Info } from 'lucide-react';
 import { Student, Modality } from '../types';
 
 interface SchedulesProps {
@@ -13,7 +13,7 @@ const Schedules: React.FC<SchedulesProps> = ({ students }) => {
       !s.onWaitlist && 
       s.modality === modality && 
       s.trainingDays === days && 
-      s.trainingTime.startsWith(time.split(' ')[0]) &&
+      (s.trainingTime || '').startsWith(time.split(' ')[0]) &&
       (s.turma === turma || (!s.turma && turma === 'Turma A'))
     ).length;
   };

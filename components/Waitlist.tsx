@@ -1,24 +1,40 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, Trash2, User, Building, Phone, ListOrdered, Clock, Info, Edit3, X, Loader2 } from 'lucide-react';
 import { Student } from '../types';
 import StudentForm from './StudentForm';
+import Pagination from './Pagination';
+
+const ITEMS_PER_PAGE = 10;
 
 interface WaitlistProps {
   students: Student[];
+  allStudents: Student[];
   onDelete: (id: string) => void;
   onUpdate?: (student: Student) => Promise<void>;
 }
 
-const Waitlist: React.FC<WaitlistProps> = ({ students, onDelete, onUpdate }) => {
+const Waitlist: React.FC<WaitlistProps> = ({ students, allStudents, onDelete, onUpdate }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const filteredStudents = students.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.cpf.includes(searchTerm)
-  );
+  const filteredStudents = useMemo(() => {
+    setCurrentPage(1);
+    return students.filter(s => 
+      s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      s.cpf.includes(searchTerm)
+    );
+  }, [students, searchTerm]);
+
+  const totalPages = Math.ceil(filteredStudents.length / ITEMS_PER_PAGE);
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredStudents.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredStudents, currentPage]);
+
+  const pageOffset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   const handleEditSave = async (updatedData: Student) => {
     if (!onUpdate) return;
@@ -72,12 +88,12 @@ const Waitlist: React.FC<WaitlistProps> = ({ students, onDelete, onUpdate }) => 
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-50">
-              {filteredStudents.map((student, index) => (
+              {paginatedStudents.map((student, index) => (
                 <tr key={student.id} className="hover:bg-orange-50/30 transition-all group">
                   <td className="p-6">
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-lg shadow-inner bg-orange-100 text-orange-700 border-2 border-orange-200">
-                        {index + 1}
+                        {pageOffset + index + 1}
                       </div>
                       <div>
                         <p className="font-black text-gray-800 text-base leading-tight group-hover:text-emerald-800 transition-colors">{student.name}</p>
@@ -144,6 +160,15 @@ const Waitlist: React.FC<WaitlistProps> = ({ students, onDelete, onUpdate }) => 
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredStudents.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={(p) => { setCurrentPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+          label="na fila"
+        />
       </div>
 
       <div className="bg-amber-50 p-6 rounded-[2rem] border border-amber-100 flex items-center gap-4 shadow-xl">
@@ -185,7 +210,7 @@ const Waitlist: React.FC<WaitlistProps> = ({ students, onDelete, onUpdate }) => 
               <StudentForm 
                 initialData={editingStudent} 
                 onSave={handleEditSave} 
-                students={[]} // Passamos vazio para ignorar o cálculo de ocupação da própria fila se necessário ou pode-se passar a lista completa
+                students={allStudents.filter(s => s.id !== editingStudent.id)}
                 isSaving={isUpdating}
               />
             </div>

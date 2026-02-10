@@ -13,7 +13,11 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ students, attendance, onNavigate, user }) => {
   const stats = [
     { label: 'Total Alunos', value: students.filter(s => !s.onWaitlist).length, icon: Users, color: 'bg-emerald-600', view: 'students-list' as View, roles: [UserRole.ADMIN] },
-    { label: 'Presenças Hoje', value: attendance.filter(a => a.timestamp.startsWith(new Date().toISOString().split('T')[0])).length, icon: ClipboardCheck, color: 'bg-green-600', view: 'attendance' as View, roles: [UserRole.ADMIN, UserRole.TEACHER] },
+    { label: 'Presenças Hoje', value: attendance.filter(a => {
+      const today = new Date();
+      const localDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      return a.timestamp.startsWith(localDate);
+    }).length, icon: ClipboardCheck, color: 'bg-green-600', view: 'attendance' as View, roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { label: 'Fila Espera', value: students.filter(s => s.onWaitlist).length, icon: ListOrdered, color: 'bg-orange-600', view: 'waitlist' as View, roles: [UserRole.ADMIN] },
     { label: 'Bloqueados', value: students.filter(s => s.blocked).length, icon: Ban, color: 'bg-red-600', view: 'block-student' as View, roles: [UserRole.ADMIN] },
   ];
@@ -129,9 +133,9 @@ const Dashboard: React.FC<DashboardProps> = ({ students, attendance, onNavigate,
           </h3>
           <div className="space-y-4">
             {[
-              { name: 'Academia', students: students.filter(s => s.modality === 'Academia' && !s.onWaitlist).length, color: 'bg-emerald-500' },
-              { name: 'Funcional', students: students.filter(s => s.modality === 'Funcional' && !s.onWaitlist).length, color: 'bg-green-500' },
-              { name: 'Dança', students: students.filter(s => s.modality === 'Dança' && !s.onWaitlist).length, color: 'bg-teal-500' }
+              { name: 'Academia', students: students.filter(s => s.modality === 'Academia' && !s.onWaitlist).length, color: 'bg-emerald-500', view: 'students-list' as View },
+              { name: 'Funcional', students: students.filter(s => s.modality === 'Funcional' && !s.onWaitlist).length, color: 'bg-green-500', view: 'students-list' as View },
+              { name: 'Dança', students: students.filter(s => s.modality === 'Dança' && !s.onWaitlist).length, color: 'bg-teal-500', view: 'students-list' as View }
             ].map((mod) => (
               <div key={mod.name} className="flex items-center justify-between p-4 rounded-2xl border border-emerald-50 hover:bg-emerald-50/30 transition-all">
                 <div className="flex items-center space-x-3">
@@ -141,9 +145,12 @@ const Dashboard: React.FC<DashboardProps> = ({ students, attendance, onNavigate,
                     <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider">{mod.students} Ativos</span>
                   </div>
                 </div>
-                <div className="bg-emerald-950 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                <button 
+                  onClick={() => onNavigate(mod.view)}
+                  className="bg-emerald-950 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-800 transition-colors cursor-pointer"
+                >
                   Ver
-                </div>
+                </button>
               </div>
             ))}
           </div>

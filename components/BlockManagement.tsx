@@ -1,7 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Ban, Search, ShieldCheck, ShieldAlert, UserX } from 'lucide-react';
 import { Student } from '../types';
+import Pagination from './Pagination';
+
+const ITEMS_PER_PAGE = 12;
 
 interface BlockManagementProps {
   students: Student[];
@@ -10,11 +13,21 @@ interface BlockManagementProps {
 
 const BlockManagement: React.FC<BlockManagementProps> = ({ students, onToggleBlock }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const blockedOnly = true; // Based on UI context usually
 
-  const filtered = students.filter(s => 
-    (s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.cpf.includes(searchTerm))
-  );
+  const filtered = useMemo(() => {
+    setCurrentPage(1);
+    return students.filter(s => 
+      (s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.cpf.includes(searchTerm))
+    );
+  }, [students, searchTerm]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
 
   return (
     <div className="space-y-6">
@@ -37,7 +50,7 @@ const BlockManagement: React.FC<BlockManagementProps> = ({ students, onToggleBlo
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map(student => (
+        {paginatedStudents.map(student => (
           <div key={student.id} className={`bg-white rounded-xl border p-6 transition-all ${student.blocked ? 'border-red-100 shadow-sm' : 'border-gray-100 shadow-none'}`}>
             <div className="flex justify-between items-start mb-4">
               <div className={`w-12 h-12 rounded-full flex items-center justify-center ${student.blocked ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}`}>
@@ -74,6 +87,15 @@ const BlockManagement: React.FC<BlockManagementProps> = ({ students, onToggleBlo
           </div>
         ))}
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filtered.length}
+        itemsPerPage={ITEMS_PER_PAGE}
+        onPageChange={(p) => { setCurrentPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        label="servidores"
+      />
 
       {filtered.length === 0 && (
         <div className="bg-white rounded-xl border border-dashed border-gray-300 p-20 text-center">

@@ -3,6 +3,9 @@ import React, { useState, useMemo } from 'react';
 import { Search, Trash2, Clock, Edit3, X, Dumbbell, Activity, Music, Users, ChevronRight } from 'lucide-react';
 import { Student, Modality } from '../types';
 import StudentForm from './StudentForm';
+import Pagination from './Pagination';
+
+const STUDENTS_PER_PAGE = 24;
 
 interface StudentListProps {
   students: Student[];
@@ -15,17 +18,34 @@ const StudentList: React.FC<StudentListProps> = ({ students, onDelete, onUpdate,
   const [searchTerm, setSearchTerm] = useState('');
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const filteredStudents = useMemo(() => {
-    return students.filter(s => 
+    const result = students.filter(s => 
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       s.cpf.includes(searchTerm)
     );
+    return result;
   }, [students, searchTerm]);
+
+  const totalPages = Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE);
+
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * STUDENTS_PER_PAGE;
+    return filteredStudents.slice(start, start + STUDENTS_PER_PAGE);
+  }, [filteredStudents, currentPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Reset page when search changes
+  useMemo(() => { setCurrentPage(1); }, [searchTerm]);
 
   const groupedByTime = useMemo(() => {
     const groups: Record<string, Record<string, Student[]>> = {};
-    filteredStudents.forEach(s => {
+    paginatedStudents.forEach(s => {
       const time = s.trainingTime || 'Sem Horário';
       const turma = s.turma || 'Turma A';
       if (!groups[time]) groups[time] = {};
@@ -36,7 +56,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onDelete, onUpdate,
       acc[key] = groups[key];
       return acc;
     }, {} as Record<string, Record<string, Student[]>>);
-  }, [filteredStudents]);
+  }, [paginatedStudents]);
 
   const handleEditSave = async (updatedData: Student) => {
     setIsUpdating(true);
@@ -64,7 +84,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onDelete, onUpdate,
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Alunos Matriculados</h2>
-          <p className="text-emerald-600 font-bold text-[10px] uppercase tracking-widest mt-1">Organização Subdividida por Turmas A/B</p>
+          <p className="text-emerald-600 font-bold text-[10px] uppercase tracking-widest mt-1">Organização Subdividida por Turmas A/B — {filteredStudents.length} servidor(es)</p>
         </div>
         <div className="relative w-full md:w-80">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -160,6 +180,15 @@ const StudentList: React.FC<StudentListProps> = ({ students, onDelete, onUpdate,
           </div>
         ))}
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredStudents.length}
+        itemsPerPage={STUDENTS_PER_PAGE}
+        onPageChange={handlePageChange}
+        label="servidores"
+      />
 
       {editingStudent && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">

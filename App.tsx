@@ -17,7 +17,7 @@ import Documents from './components/Documents';
 import StudentDocuments from './components/StudentDocuments';
 import Reports from './components/Reports';
 import Schedules from './components/Schedules';
-import TeacherManagement from './components/TeacherManagement';
+// TeacherManagement foi substituído pelo SystemUsers
 import StudentList from './components/StudentList';
 import Waitlist from './components/Waitlist';
 import Login from './components/Login';
@@ -66,15 +66,29 @@ const App: React.FC = () => {
     }
   }, [isAuthenticated]);
 
+  // Restaurar sessão ao montar
+  useEffect(() => {
+    const saved = sessionStorage.getItem('academia_user');
+    if (saved) {
+      try {
+        const user = JSON.parse(saved);
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+      } catch { /* sessão corrompida, ignorar */ }
+    }
+  }, []);
+
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
     setCurrentView('home');
+    sessionStorage.setItem('academia_user', JSON.stringify(user));
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentUser(null);
+    sessionStorage.removeItem('academia_user');
   };
 
   const handleNavigate = (view: View) => {
@@ -85,6 +99,13 @@ const App: React.FC = () => {
   };
 
   const addStudent = async (student: Student) => {
+    // Verificar CPF duplicado
+    const existingCpf = students.find(s => s.cpf === student.cpf.replace(/\D/g, ''));
+    if (existingCpf) {
+      alert(`AVISO: Já existe matrícula com o CPF ${student.cpf}. Verifique na lista de alunos.`);
+      return;
+    }
+
     const activeInSlot = students.filter(s => 
       !s.onWaitlist && 
       s.modality === student.modality && 
@@ -116,7 +137,26 @@ const App: React.FC = () => {
 
   const updateStudent = async (student: Student) => {
     try {
-      const updated = await studentService.update(student.id, student);
+      // Reavaliar se deve sair da fila de espera
+      const activeInSlot = students.filter(s => 
+        s.id !== student.id &&
+        !s.onWaitlist && 
+        s.modality === student.modality && 
+        s.trainingDays === student.trainingDays && 
+        s.trainingTime === student.trainingTime &&
+        s.turma === student.turma
+      );
+      const hasVacancy = activeInSlot.length < 12;
+      const updatedStudent = { 
+        ...student, 
+        onWaitlist: student.onWaitlist && !hasVacancy ? true : (student.onWaitlist && hasVacancy ? false : student.onWaitlist) 
+      };
+      // Se estava na fila e agora tem vaga, promover
+      if (student.onWaitlist && hasVacancy) {
+        updatedStudent.onWaitlist = false;
+      }
+
+      const updated = await studentService.update(updatedStudent.id, updatedStudent);
       setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
     } catch (err: any) {
       alert("Erro ao atualizar: " + err.message);
@@ -126,9 +166,39 @@ const App: React.FC = () => {
 
   const deleteStudent = async (id: string) => {
     if (!confirm("Deseja realmente remover esta matrícula permanentemente?")) return;
+    
+    const removedStudent = students.find(s => s.id === id);
+    
     try {
       await studentService.delete(id);
-      setStudents(p => p.filter(s => s.id !== id));
+      const updatedStudents = students.filter(s => s.id !== id);
+      
+      // Promoção automática: se era aluno ativo, promover primeiro da fila de espera da mesma turma
+      if (removedStudent && !removedStudent.onWaitlist) {
+        const nextInLine = updatedStudents.find(s => 
+          s.onWaitlist && 
+          s.modality === removedStudent.modality && 
+          s.trainingDays === removedStudent.trainingDays && 
+          s.trainingTime === removedStudent.trainingTime &&
+          s.turma === removedStudent.turma
+        );
+        
+        if (nextInLine) {
+          try {
+            await studentService.update(nextInLine.id, { ...nextInLine, onWaitlist: false });
+            const finalStudents = updatedStudents.map(s => 
+              s.id === nextInLine.id ? { ...s, onWaitlist: false } : s
+            );
+            setStudents(finalStudents);
+            alert(`${nextInLine.name} foi promovido(a) da fila de espera!`);
+            return;
+          } catch (promErr) {
+            console.error('Erro ao promover da fila:', promErr);
+          }
+        }
+      }
+      
+      setStudents(updatedStudents);
     } catch (err: any) {
       alert("Erro ao remover: " + err.message);
     }
@@ -148,7 +218,7 @@ const App: React.FC = () => {
   const recordAttendance = async (record: AttendanceRecord) => {
     try {
       const saved = await attendanceService.record(record.studentCpf, record.hour, record.photo);
-      const recordWithId = { ...record, id: saved.id };
+      const recordWithId = { ...record, id: saved.id, timestamp: saved.timestamp || record.timestamp };
       setAttendance(p => [recordWithId, ...p]);
     } catch (err: any) {
       alert("Erro ao gravar frequência: " + err.message);
@@ -217,7 +287,7 @@ const App: React.FC = () => {
       case 'system-users': return <SystemUsers />;
       case 'add-student': return <StudentForm onSave={addStudent} students={students} isSaving={isSaving} />;
       case 'students-list': return <StudentList students={students.filter(s => !s.onWaitlist)} onDelete={deleteStudent} onUpdate={updateStudent} isAdmin={currentUser.role === UserRole.ADMIN} />;
-      case 'waitlist': return <Waitlist students={students.filter(s => s.onWaitlist)} onDelete={deleteStudent} onUpdate={updateStudent} />;
+      case 'waitlist': return <Waitlist students={students.filter(s => s.onWaitlist)} allStudents={students} onDelete={deleteStudent} onUpdate={updateStudent} />;
       case 'block-student': return <BlockManagement students={students} onToggleBlock={toggleStudentBlock} />;
       case 'documents': return <Documents documents={documents.filter(d => !d.studentId)} onSaveDocument={handleSaveDocument} onDeleteDocument={handleDeleteDocument} />;
       case 'student-documents': return <StudentDocuments students={students} documents={documents.filter(d => !!d.studentId)} onSaveDocument={handleSaveDocument} onDeleteDocument={handleDeleteDocument} />;

@@ -82,6 +82,22 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
     return () => stopCamera();
   }, []);
 
+  const capturePhoto = (): string | undefined => {
+    if (!cameraActive || !videoRef.current || !canvasRef.current) return undefined;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth || 320;
+    canvas.height = video.videoHeight || 240;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return undefined;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    try {
+      return canvas.toDataURL('image/jpeg', 0.6);
+    } catch {
+      return undefined;
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCpf = cpf.replace(/\D/g, '');
@@ -92,12 +108,26 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
     } else if (student.blocked) {
       setMessage({ text: 'ACESSO BLOQUEADO PELO SISTEMA.', type: 'error' });
     } else {
+      // Verificar presença duplicada no mesmo dia
+      const today = new Date().toISOString().split('T')[0];
+      const alreadyRecorded = attendance.some(a => 
+        a.studentCpf === cleanCpf && a.timestamp.startsWith(today)
+      );
+      if (alreadyRecorded) {
+        setMessage({ text: `${student.name.split(' ')[0]} já tem presença registrada hoje.`, type: 'error' });
+        setCpf('');
+        setTimeout(() => setMessage(null), 4000);
+        return;
+      }
+
+      const photo = capturePhoto();
       const now = new Date();
       onAddAttendance({
         id: Math.random().toString(36).substr(2, 9),
         studentCpf: student.cpf,
         timestamp: now.toISOString(),
-        hour: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        hour: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        photo
       });
       setMessage({ text: `Presença: ${student.name.split(' ')[0]} registrada!`, type: 'success' });
       setCpf('');

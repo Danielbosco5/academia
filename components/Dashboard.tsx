@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Users, ClipboardCheck, Ban, Clock, ChevronRight, Shield, Camera, BarChart3, ListOrdered } from 'lucide-react';
 import { Student, AttendanceRecord, View, User, UserRole } from '../types';
+import PhotoModal from './PhotoModal';
 
 interface DashboardProps {
   students: Student[];
@@ -11,6 +12,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ students, attendance, onNavigate, user }) => {
+  const [selectedPhoto, setSelectedPhoto] = useState<{url: string; name: string; hour: string; date: string} | null>(null);
   const stats = [
     { label: 'Total Alunos', value: students.filter(s => !s.onWaitlist).length, icon: Users, color: 'bg-emerald-600', view: 'students-list' as View, roles: [UserRole.ADMIN] },
     { label: 'Presenças Hoje', value: attendance.filter(a => {
@@ -102,7 +104,15 @@ const Dashboard: React.FC<DashboardProps> = ({ students, attendance, onNavigate,
                 const student = students.find(s => s.cpf === record.studentCpf);
                 return (
                   <div key={record.id} className="p-4 flex items-center space-x-3 hover:bg-emerald-50/50 transition-colors border-b border-gray-50 last:border-0">
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-black shrink-0 overflow-hidden">
+                    <div 
+                      className={`w-10 h-10 md:w-12 md:h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-black shrink-0 overflow-hidden ${record.photo ? 'cursor-pointer hover:ring-2 hover:ring-emerald-400 transition-all' : ''}`}
+                      onClick={() => record.photo && setSelectedPhoto({
+                        url: record.photo,
+                        name: student?.name || 'Servidor',
+                        hour: record.hour,
+                        date: new Date(record.timestamp).toLocaleDateString('pt-BR')
+                      })}
+                    >
                       {record.photo ? <img src={record.photo} alt="Foto do servidor" className="w-full h-full object-cover" /> : student?.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -156,6 +166,17 @@ const Dashboard: React.FC<DashboardProps> = ({ students, attendance, onNavigate,
           </div>
         </div>
       </div>
+
+      {selectedPhoto && (
+        <PhotoModal
+          isOpen={!!selectedPhoto}
+          onClose={() => setSelectedPhoto(null)}
+          photoUrl={selectedPhoto.url}
+          studentName={selectedPhoto.name}
+          hour={selectedPhoto.hour}
+          date={selectedPhoto.date}
+        />
+      )}
     </div>
   );
 };

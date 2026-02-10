@@ -56,4 +56,4 @@ export interface DocumentItem {
   studentId?: string;
 }
 
-export type View = 'home' | 'attendance' | 'add-student' | 'block-student' | 'documents' | 'student-documents' | 'reports' | 'schedules' | 'teachers' | 'students-list' | 'waitlist' | 'system-users';
+export type View = 'home' | 'attendance' | 'add-student' | 'block-student' | 'documents' | 'student-documents' | 'reports' | 'schedules' | 'teachers' | 'students-list' | 'waitlist' | 'system-users' | 'photo-gallery';

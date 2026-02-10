@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, UserCheck, AlertCircle, Clock, Camera, CameraOff, RefreshCw, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { Student, AttendanceRecord } from '../types';
+import PhotoModal from './PhotoModal';
 
 interface AttendanceProps {
   students: Student[];
@@ -14,6 +15,7 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<{url: string; name: string; hour: string; date: string} | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -243,7 +245,13 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
                         <img 
                           src={rec.photo} 
                           alt={student?.name || 'Servidor'} 
-                          className="w-10 h-10 rounded-xl object-cover shrink-0 border-2 border-emerald-200 group-hover:border-emerald-400 transition-colors"
+                          className="w-10 h-10 rounded-xl object-cover shrink-0 border-2 border-emerald-200 group-hover:border-emerald-400 transition-colors cursor-pointer hover:ring-2 hover:ring-emerald-400"
+                          onClick={() => setSelectedPhoto({
+                            url: rec.photo!,
+                            name: student?.name || 'Servidor',
+                            hour: rec.hour,
+                            date: new Date(rec.timestamp).toLocaleDateString('pt-BR')
+                          })}
                         />
                       ) : (
                         <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400 text-xs shrink-0 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors uppercase">
@@ -287,6 +295,17 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
           animation: spin 6s linear infinite;
         }
       `}</style>
+
+      {selectedPhoto && (
+        <PhotoModal
+          isOpen={!!selectedPhoto}
+          onClose={() => setSelectedPhoto(null)}
+          photoUrl={selectedPhoto.url}
+          studentName={selectedPhoto.name}
+          hour={selectedPhoto.hour}
+          date={selectedPhoto.date}
+        />
+      )}
     </div>
   );
 };

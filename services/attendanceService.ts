@@ -78,6 +78,32 @@ export const attendanceService = {
     }
   },
 
+  async getByDateRange(startDate: string, endDate: string) {
+    try {
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select('*')
+        .gte('timestamp', `${startDate}T00:00:00`)
+        .lte('timestamp', `${endDate}T23:59:59`)
+        .order('timestamp', { ascending: false });
+      
+      if (error) {
+        if (error.code === '42P01') return [];
+        throw error;
+      }
+      return (data || []).map(row => ({
+        id: row.id,
+        studentCpf: row.student_cpf,
+        timestamp: row.timestamp,
+        hour: row.hour,
+        photo: row.photo_url
+      }));
+    } catch (err) {
+      console.error("attendanceService.getByDateRange failed:", err);
+      return [];
+    }
+  },
+
   async record(studentCpf: string, hour: string, photo?: string) {
     // Faz upload da foto para o Storage antes de gravar o registro
     let photoUrl: string | undefined;

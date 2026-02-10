@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Home, Users, ClipboardCheck, Ban, FileText, 
   Files, BarChart3, Clock, Menu, PlusCircle,
-  LogOut, ShieldCheck, UserCog, ListOrdered, X, Loader2, KeyRound, AlertTriangle
+  LogOut, ShieldCheck, UserCog, ListOrdered, X, Loader2, KeyRound, AlertTriangle, Camera
 } from 'lucide-react';
 import { View, Student, AttendanceRecord, DocumentItem, Modality, User, UserRole } from './types';
 import { studentService } from './services/studentService';
@@ -22,6 +22,7 @@ import StudentList from './components/StudentList';
 import Waitlist from './components/Waitlist';
 import Login from './components/Login';
 import SystemUsers from './components/SystemUsers';
+import PhotoGallery from './components/PhotoGallery';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('home');
@@ -255,6 +256,7 @@ const App: React.FC = () => {
     { id: 'schedules', label: 'Horários', icon: Clock, roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { id: 'documents', label: 'Docs Gerais', icon: FileText, roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { id: 'student-documents', label: 'Docs Alunos', icon: Files, roles: [UserRole.ADMIN, UserRole.TEACHER] },
+    { id: 'photo-gallery', label: 'Fotos', icon: Camera, roles: [UserRole.ADMIN] },
     { id: 'reports', label: 'Relatórios', icon: BarChart3, roles: [UserRole.ADMIN] },
   ];
 
@@ -291,6 +293,7 @@ const App: React.FC = () => {
       case 'block-student': return <BlockManagement students={students} onToggleBlock={toggleStudentBlock} />;
       case 'documents': return <Documents documents={documents.filter(d => !d.studentId)} onSaveDocument={handleSaveDocument} onDeleteDocument={handleDeleteDocument} />;
       case 'student-documents': return <StudentDocuments students={students} documents={documents.filter(d => !!d.studentId)} onSaveDocument={handleSaveDocument} onDeleteDocument={handleDeleteDocument} />;
+      case 'photo-gallery': return <PhotoGallery students={students} />;
       case 'reports': return <Reports students={students} attendance={attendance} />;
       case 'schedules': return <Schedules students={students} />;
       default: return <Dashboard students={students} attendance={attendance} onNavigate={handleNavigate} user={currentUser} />;

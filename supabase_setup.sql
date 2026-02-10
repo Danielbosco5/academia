@@ -288,7 +288,56 @@ BEGIN
 END $$;
 
 -- ============================================================
--- 8. ADMINISTRADOR PADRÃO (caso nenhum usuário exista)
+-- 8. STORAGE BUCKET: attendance-photos (Fotos de Frequência)
+-- ============================================================
+-- Cria o bucket público para armazenar fotos capturadas na
+-- frequência. As fotos ficam organizadas por data (YYYY-MM-DD/).
+-- O app faz upload via supabase.storage e salva a URL pública
+-- na coluna photo_url da tabela attendance_records.
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+SELECT 
+  'attendance-photos',
+  'attendance-photos',
+  TRUE,
+  2097152, -- 2MB
+  ARRAY['image/jpeg', 'image/png', 'image/webp']
+WHERE NOT EXISTS (
+  SELECT 1 FROM storage.buckets WHERE id = 'attendance-photos'
+);
+
+-- Política para permitir upload anônimo (o app usa anon key)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'objects' 
+    AND schemaname = 'storage'
+    AND policyname = 'Allow public upload to attendance-photos'
+  ) THEN
+    CREATE POLICY "Allow public upload to attendance-photos"
+      ON storage.objects FOR INSERT
+      WITH CHECK (bucket_id = 'attendance-photos');
+  END IF;
+END $$;
+
+-- Política para permitir leitura pública das fotos
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'objects' 
+    AND schemaname = 'storage'
+    AND policyname = 'Allow public read attendance-photos'
+  ) THEN
+    CREATE POLICY "Allow public read attendance-photos"
+      ON storage.objects FOR SELECT
+      USING (bucket_id = 'attendance-photos');
+  END IF;
+END $$;
+
+-- ============================================================
+-- 9. ADMINISTRADOR PADRÃO (caso nenhum usuário exista)
 -- ============================================================
 -- Cria um administrador padrão apenas se a tabela estiver vazia,
 -- garantindo que exista ao menos um acesso ao sistema.
@@ -306,7 +355,7 @@ WHERE NOT EXISTS (
 );
 
 -- ============================================================
--- 9. VERIFICAÇÃO FINAL - Relatório de Status
+-- 10. VERIFICAÇÃO FINAL - Relatório de Status
 -- ============================================================
 -- Rode esta parte separadamente no SQL Editor do Supabase para
 -- ver o status de todas as tabelas e colunas.

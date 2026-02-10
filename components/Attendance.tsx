@@ -239,9 +239,17 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
                 return (
                   <div key={rec.id} className="p-4 border-b border-slate-50 flex items-center justify-between hover:bg-slate-50 transition-all rounded-2xl group mb-1 last:mb-0">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400 text-xs shrink-0 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors uppercase">
-                        {student?.name.charAt(0)}
-                      </div>
+                      {rec.photo && !rec.photo.startsWith('data:') ? (
+                        <img 
+                          src={rec.photo} 
+                          alt={student?.name || 'Servidor'} 
+                          className="w-10 h-10 rounded-xl object-cover shrink-0 border-2 border-emerald-200 group-hover:border-emerald-400 transition-colors"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400 text-xs shrink-0 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors uppercase">
+                          {student?.name.charAt(0)}
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <p className="font-black text-slate-800 text-[11px] truncate uppercase tracking-tight">{student?.name || 'Servidor'}</p>
                         <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-widest mt-0.5">Entrada {rec.hour}</p>

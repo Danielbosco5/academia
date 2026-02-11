@@ -120,8 +120,14 @@ const Dashboard: React.FC<DashboardProps> = ({ students, attendance, onNavigate,
                       <p className="text-[10px] text-gray-400 truncate">Matrícula: {record.studentCpf}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-emerald-700 font-black text-xs">{record.hour}</div>
-                      <div className="text-[9px] text-gray-400 font-medium">Hoje</div>
+                      <div className="text-emerald-700 font-black text-xs flex items-center gap-1 justify-end">
+                        <span>{record.hour}</span>
+                      </div>
+                      {record.exitHour ? (
+                        <div className="text-orange-600 font-bold text-[10px]">Saída {record.exitHour}</div>
+                      ) : (
+                        <div className="text-[9px] text-amber-500 font-medium">Sem saída</div>
+                      )}
                     </div>
                   </div>
                 );

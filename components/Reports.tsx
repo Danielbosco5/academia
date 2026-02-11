@@ -64,14 +64,16 @@ const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
     ]);
 
     if (reportType === 'frequencia') {
-      const freqHeaders = ['Nome', 'CPF', 'Data/Hora', 'Horário Registro'];
+      const freqHeaders = ['Nome', 'CPF', 'Data/Hora Entrada', 'Horário Entrada', 'Data/Hora Saída', 'Horário Saída'];
       const freqRows = attendance.map(a => {
         const st = students.find(s => s.cpf === a.studentCpf);
         return [
           st?.name || 'Desconhecido',
           a.studentCpf,
           new Date(a.timestamp).toLocaleString('pt-BR'),
-          a.hour
+          a.hour,
+          a.exitTimestamp ? new Date(a.exitTimestamp).toLocaleString('pt-BR') : '-',
+          a.exitHour || '-'
         ];
       });
       return [freqHeaders, ...freqRows].map(r => r.join(';')).join('\n');
@@ -111,8 +113,8 @@ const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
         <th>Nº</th>
         <th>Nome do Servidor</th>
         <th>CPF</th>
-        <th>Data/Hora</th>
-        <th>Horário Registro</th>
+        <th>Entrada</th>
+        <th>Saída</th>
       `;
       tableRows = attendance.map((a, i) => {
         const st = students.find(s => s.cpf === a.studentCpf);
@@ -121,8 +123,8 @@ const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
             <td style="text-align:center;color:#6b7280;">${i + 1}</td>
             <td style="font-weight:600;">${st?.name || 'Desconhecido'}</td>
             <td style="font-family:monospace;font-size:11px;">${a.studentCpf}</td>
-            <td>${new Date(a.timestamp).toLocaleString('pt-BR')}</td>
-            <td style="text-align:center;font-weight:700;color:#059669;">${a.hour}</td>
+            <td style="text-align:center;font-weight:700;color:#059669;">${a.hour} <span style="font-weight:400;color:#6b7280;font-size:10px;">(${new Date(a.timestamp).toLocaleDateString('pt-BR')})</span></td>
+            <td style="text-align:center;font-weight:700;color:#ea580c;">${a.exitHour || '—'} ${a.exitTimestamp ? `<span style="font-weight:400;color:#6b7280;font-size:10px;">(${new Date(a.exitTimestamp).toLocaleDateString('pt-BR')})</span>` : ''}</td>
           </tr>
         `;
       }).join('');

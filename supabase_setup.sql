@@ -99,7 +99,10 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
   student_cpf TEXT NOT NULL,
   timestamp   TIMESTAMPTZ DEFAULT NOW(),
   hour        TEXT DEFAULT '',
-  photo_url   TEXT
+  photo_url   TEXT,
+  exit_timestamp TIMESTAMPTZ,
+  exit_hour      TEXT,
+  exit_photo_url TEXT
 );
 
 DO $$
@@ -115,6 +118,15 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='attendance_records' AND column_name='photo_url') THEN
     ALTER TABLE public.attendance_records ADD COLUMN photo_url TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='attendance_records' AND column_name='exit_timestamp') THEN
+    ALTER TABLE public.attendance_records ADD COLUMN exit_timestamp TIMESTAMPTZ;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='attendance_records' AND column_name='exit_hour') THEN
+    ALTER TABLE public.attendance_records ADD COLUMN exit_hour TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='attendance_records' AND column_name='exit_photo_url') THEN
+    ALTER TABLE public.attendance_records ADD COLUMN exit_photo_url TEXT;
   END IF;
 END $$;
 

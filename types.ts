@@ -7,7 +7,8 @@ export enum Modality {
 
 export enum UserRole {
   ADMIN = 'Administrador',
-  TEACHER = 'Professor'
+  TEACHER = 'Professor',
+  PONTO = 'Ponto'
 }
 
 export interface User {
@@ -44,6 +45,9 @@ export interface AttendanceRecord {
   timestamp: string;
   hour: string;
   photo?: string;
+  exitTimestamp?: string;
+  exitHour?: string;
+  exitPhoto?: string;
 }
 
 export interface DocumentItem {

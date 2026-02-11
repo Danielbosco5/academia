@@ -82,7 +82,7 @@ const App: React.FC = () => {
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
-    setCurrentView('home');
+    setCurrentView(user.role === UserRole.PONTO ? 'attendance' : 'home');
     sessionStorage.setItem('academia_user', JSON.stringify(user));
   };
 
@@ -226,6 +226,15 @@ const App: React.FC = () => {
     }
   };
 
+  const recordExit = async (recordId: string, studentCpf: string, exitHour: string, exitPhoto?: string) => {
+    try {
+      const updated = await attendanceService.recordExit(recordId, studentCpf, exitHour, exitPhoto);
+      setAttendance(p => p.map(a => a.id === recordId ? updated : a));
+    } catch (err: any) {
+      alert("Erro ao gravar saída: " + err.message);
+    }
+  };
+
   const handleSaveDocument = async (doc: Partial<DocumentItem>) => {
     try {
       const saved = await documentService.create(doc);
@@ -264,6 +273,43 @@ const App: React.FC = () => {
     return <Login onLogin={handleLogin} />;
   }
 
+  // Perfil PONTO: interface quiosque limpa, só frequência
+  if (currentUser.role === UserRole.PONTO) {
+    return (
+      <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+        {/* Header minimalista */}
+        <header className="h-16 bg-slate-900 flex items-center justify-between px-6 shrink-0">
+          <h1 className="font-black text-lg tracking-tight text-white">Academia <span className="text-emerald-500">GO</span></h1>
+          <div className="flex items-center gap-4">
+            <span className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-400">Terminal Ponto</span>
+            <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-400 transition-colors" title="Sair">
+              <LogOut size={18} />
+            </button>
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+          <div className="max-w-5xl mx-auto">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-64 text-emerald-600">
+                <Loader2 className="animate-spin mb-4" size={48} />
+                <p className="font-bold uppercase tracking-widest text-xs">Iniciando terminal...</p>
+              </div>
+            ) : loadError ? (
+              <div className="p-10 bg-red-50 rounded-3xl border border-red-100 text-center space-y-4">
+                <AlertTriangle className="mx-auto text-red-500" size={48} />
+                <h3 className="font-black text-red-900 uppercase">Falha na Sincronização</h3>
+                <p className="text-red-700 font-medium text-sm">{loadError}</p>
+                <button onClick={loadData} className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold uppercase text-xs">Tentar Novamente</button>
+              </div>
+            ) : (
+              <Attendance students={students} attendance={attendance} onAddAttendance={recordAttendance} onRecordExit={recordExit} />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const filteredMenu = menuItems.filter(item => item.roles.includes(currentUser.role));
 
   const renderView = () => {
@@ -285,7 +331,7 @@ const App: React.FC = () => {
 
     switch (currentView) {
       case 'home': return <Dashboard students={students} attendance={attendance} onNavigate={handleNavigate} user={currentUser} />;
-      case 'attendance': return <Attendance students={students} attendance={attendance} onAddAttendance={recordAttendance} />;
+      case 'attendance': return <Attendance students={students} attendance={attendance} onAddAttendance={recordAttendance} onRecordExit={recordExit} />;
       case 'system-users': return <SystemUsers />;
       case 'add-student': return <StudentForm onSave={addStudent} students={students} isSaving={isSaving} />;
       case 'students-list': return <StudentList students={students.filter(s => !s.onWaitlist)} onDelete={deleteStudent} onUpdate={updateStudent} isAdmin={currentUser.role === UserRole.ADMIN} />;

@@ -222,7 +222,12 @@ const App: React.FC = () => {
   const recordAttendance = async (record: AttendanceRecord) => {
     try {
       const saved = await attendanceService.record(record.studentCpf, record.hour, record.photo);
-      const recordWithId = { ...record, id: saved.id, timestamp: saved.timestamp || record.timestamp };
+      const recordWithId = {
+        ...record,
+        id: saved.id,
+        timestamp: saved.timestamp || record.timestamp,
+        photo: saved.photo_url || record.photo
+      };
       setAttendance(p => [recordWithId, ...p]);
     } catch (err: any) {
       alert("Erro ao gravar frequência: " + err.message);

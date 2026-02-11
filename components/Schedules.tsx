@@ -97,7 +97,11 @@ const Schedules: React.FC<SchedulesProps> = ({ students }) => {
                   </div>
                   
                   <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {slot.times.map(time => (
+                    {slot.times.map(time => {
+                      // Seg/Qua/Sex = Turma A | Ter/Qui = Turma B
+                      const turmasToShow = slot.days.includes('Segunda') ? ['Turma A'] : ['Turma B'];
+
+                      return (
                       <div key={time} className="space-y-4">
                         <div className="flex items-center gap-2 px-1">
                           <p className="text-sm font-black text-slate-800 leading-none">{time}</p>
@@ -105,7 +109,7 @@ const Schedules: React.FC<SchedulesProps> = ({ students }) => {
                         </div>
 
                         <div className="grid grid-cols-1 gap-3">
-                          {['Turma A', 'Turma B'].map(turma => {
+                          {turmasToShow.map(turma => {
                             const count = getOccupancy(activity.name as Modality, slot.days, time, turma);
                             const isFull = count >= 12;
                             const percentage = (count / 12) * 100;
@@ -132,7 +136,8 @@ const Schedules: React.FC<SchedulesProps> = ({ students }) => {
                           })}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -149,8 +154,9 @@ const Schedules: React.FC<SchedulesProps> = ({ students }) => {
         <div className="flex-1">
           <h5 className="font-black text-emerald-900 uppercase text-sm tracking-tight mb-2">Protocolo de Subturmas</h5>
           <p className="text-xs text-emerald-800/70 leading-relaxed font-medium">
-            Cada horário (ex: 07h) é composto por duas turmas independentes: <strong>Turma A</strong> e <strong>Turma B</strong>. 
-            Cada uma possui limite estrito de <strong>12 servidores</strong>. Ao realizar a matrícula, o sistema valida a ocupação da turma específica escolhida. Alunos matriculados antes da implementação desta subdivisão foram alocados automaticamente na Turma A.
+            A grade é organizada por turmas: <strong>Turma A</strong> funciona às <strong>Segunda, Quarta e Sexta</strong>, 
+            e <strong>Turma B</strong> funciona às <strong>Terça e Quinta</strong>. 
+            Cada turma possui limite estrito de <strong>12 servidores</strong> por horário. Ao realizar a matrícula, o sistema valida a ocupação da turma específica escolhida.
           </p>
         </div>
       </div>

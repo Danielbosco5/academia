@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, UserCheck, AlertCircle, Clock, Camera, CameraOff, RefreshCw, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Search, UserCheck, AlertCircle, Clock, Camera, CameraOff, RefreshCw, ShieldAlert, CheckCircle2, LogIn, LogOut } from 'lucide-react';
 import { Student, AttendanceRecord } from '../types';
 import PhotoModal from './PhotoModal';
 
@@ -8,9 +8,10 @@ interface AttendanceProps {
   students: Student[];
   attendance: AttendanceRecord[];
   onAddAttendance: (record: AttendanceRecord) => void;
+  onRecordExit: (recordId: string, studentCpf: string, exitHour: string, exitPhoto?: string) => void;
 }
 
-const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAttendance }) => {
+const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAttendance, onRecordExit }) => {
   const [cpf, setCpf] = useState('');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
@@ -110,13 +111,14 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
     } else if (student.blocked) {
       setMessage({ text: 'ACESSO BLOQUEADO PELO SISTEMA.', type: 'error' });
     } else {
-      // Verificar presença duplicada no mesmo dia
       const today = new Date().toISOString().split('T')[0];
-      const alreadyRecorded = attendance.some(a => 
+      const todayRecord = attendance.find(a => 
         a.studentCpf === cleanCpf && a.timestamp.startsWith(today)
       );
-      if (alreadyRecorded) {
-        setMessage({ text: `${student.name.split(' ')[0]} já tem presença registrada hoje.`, type: 'error' });
+
+      if (todayRecord && todayRecord.exitTimestamp) {
+        // Já registrou entrada E saída hoje
+        setMessage({ text: `${student.name.split(' ')[0]} já registrou entrada e saída hoje.`, type: 'error' });
         setCpf('');
         setTimeout(() => setMessage(null), 4000);
         return;
@@ -124,14 +126,23 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
 
       const photo = capturePhoto();
       const now = new Date();
-      onAddAttendance({
-        id: Math.random().toString(36).substr(2, 9),
-        studentCpf: student.cpf,
-        timestamp: now.toISOString(),
-        hour: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        photo
-      });
-      setMessage({ text: `Presença: ${student.name.split(' ')[0]} registrada!`, type: 'success' });
+      const hourStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      if (todayRecord && !todayRecord.exitTimestamp) {
+        // Já tem entrada, registrar SAÍDA
+        onRecordExit(todayRecord.id, student.cpf, hourStr, photo);
+        setMessage({ text: `Saída: ${student.name.split(' ')[0]} registrada às ${hourStr}!`, type: 'success' });
+      } else {
+        // Sem registro hoje, registrar ENTRADA
+        onAddAttendance({
+          id: Math.random().toString(36).substr(2, 9),
+          studentCpf: student.cpf,
+          timestamp: now.toISOString(),
+          hour: hourStr,
+          photo
+        });
+        setMessage({ text: `Entrada: ${student.name.split(' ')[0]} registrada às ${hourStr}!`, type: 'success' });
+      }
       setCpf('');
     }
     setTimeout(() => setMessage(null), 4000);
@@ -213,7 +224,7 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
                 />
               </div>
               <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-5 rounded-[1.5rem] shadow-xl shadow-emerald-100 active:scale-95 transition-all text-xs uppercase tracking-[0.2em]">
-                Confirmar Presença
+                Registrar Entrada / Saída
               </button>
             </form>
 
@@ -238,33 +249,64 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
             {attendance.length > 0 ? (
               attendance.map(rec => {
                 const student = students.find(s => s.cpf === rec.studentCpf);
+                const hasExit = !!rec.exitTimestamp;
                 return (
-                  <div key={rec.id} className="p-4 border-b border-slate-50 flex items-center justify-between hover:bg-slate-50 transition-all rounded-2xl group mb-1 last:mb-0">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {rec.photo && !rec.photo.startsWith('data:') ? (
-                        <img 
-                          src={rec.photo} 
-                          alt={student?.name || 'Servidor'} 
-                          className="w-10 h-10 rounded-xl object-cover shrink-0 border-2 border-emerald-200 group-hover:border-emerald-400 transition-colors cursor-pointer hover:ring-2 hover:ring-emerald-400"
-                          onClick={() => setSelectedPhoto({
-                            url: rec.photo!,
-                            name: student?.name || 'Servidor',
-                            hour: rec.hour,
-                            date: new Date(rec.timestamp).toLocaleDateString('pt-BR')
-                          })}
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400 text-xs shrink-0 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors uppercase">
-                          {student?.name.charAt(0)}
+                  <div key={rec.id} className="p-4 border-b border-slate-50 hover:bg-slate-50 transition-all rounded-2xl group mb-1 last:mb-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {rec.photo && !rec.photo.startsWith('data:') ? (
+                          <img 
+                            src={rec.photo} 
+                            alt={student?.name || 'Servidor'} 
+                            className="w-10 h-10 rounded-xl object-cover shrink-0 border-2 border-emerald-200 group-hover:border-emerald-400 transition-colors cursor-pointer hover:ring-2 hover:ring-emerald-400"
+                            onClick={() => setSelectedPhoto({
+                              url: rec.photo!,
+                              name: student?.name || 'Servidor',
+                              hour: rec.hour,
+                              date: new Date(rec.timestamp).toLocaleDateString('pt-BR')
+                            })}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400 text-xs shrink-0 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors uppercase">
+                            {student?.name.charAt(0)}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-black text-slate-800 text-[11px] truncate uppercase tracking-tight">{student?.name || 'Servidor'}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="flex items-center gap-1 text-[9px] text-emerald-600 font-bold uppercase tracking-widest">
+                              <LogIn size={10} /> {rec.hour}
+                            </span>
+                            {hasExit && (
+                              <span className="flex items-center gap-1 text-[9px] text-orange-600 font-bold uppercase tracking-widest">
+                                <LogOut size={10} /> {rec.exitHour}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="font-black text-slate-800 text-[11px] truncate uppercase tracking-tight">{student?.name || 'Servidor'}</p>
-                        <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-widest mt-0.5">Entrada {rec.hour}</p>
                       </div>
-                    </div>
-                    <div className="bg-slate-50 group-hover:bg-emerald-50 p-2 rounded-lg transition-colors">
-                      <CheckCircle2 size={14} className="text-slate-200 group-hover:text-emerald-500" />
+                      <div className="flex items-center gap-1.5">
+                        {hasExit && rec.exitPhoto && !rec.exitPhoto.startsWith('data:') && (
+                          <img
+                            src={rec.exitPhoto}
+                            alt="Saída"
+                            className="w-8 h-8 rounded-lg object-cover border-2 border-orange-200 cursor-pointer hover:ring-2 hover:ring-orange-400 transition-colors"
+                            onClick={() => setSelectedPhoto({
+                              url: rec.exitPhoto!,
+                              name: `${student?.name || 'Servidor'} (Saída)`,
+                              hour: rec.exitHour || '',
+                              date: new Date(rec.exitTimestamp!).toLocaleDateString('pt-BR')
+                            })}
+                          />
+                        )}
+                        <div className={`p-2 rounded-lg transition-colors ${hasExit ? 'bg-orange-50 group-hover:bg-orange-100' : 'bg-slate-50 group-hover:bg-emerald-50'}`}>
+                          {hasExit ? (
+                            <LogOut size={14} className="text-orange-500" />
+                          ) : (
+                            <LogIn size={14} className="text-emerald-500" />
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );

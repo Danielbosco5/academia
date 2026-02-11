@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { userService } from '../services/userService';
 import { User, UserRole } from '../types';
-import { ShieldCheck, UserPlus, Key, Edit, Trash2, Mail, UserCog, GraduationCap, X, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { ShieldCheck, UserPlus, Key, Edit, Trash2, Mail, UserCog, GraduationCap, X, Check, AlertCircle, Loader2, Clock } from 'lucide-react';
 
 const SystemUsers: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -82,7 +82,7 @@ const SystemUsers: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Gestão de Acesso</h2>
-          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Controle de Administradores e Professores</p>
+          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Controle de Administradores, Professores e Ponto</p>
         </div>
         <button 
           onClick={() => { setEditingUser({ role: UserRole.TEACHER }); setIsModalOpen(true); }}
@@ -103,10 +103,10 @@ const SystemUsers: React.FC = () => {
         {users.map(user => (
           <div key={user.id} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 hover:shadow-xl transition-all group">
             <div className="flex justify-between items-start mb-6">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${user.role === UserRole.ADMIN ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                {user.role === UserRole.ADMIN ? <UserCog size={28} /> : <GraduationCap size={28} />}
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${user.role === UserRole.ADMIN ? 'bg-emerald-50 text-emerald-600' : user.role === UserRole.PONTO ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                {user.role === UserRole.ADMIN ? <UserCog size={28} /> : user.role === UserRole.PONTO ? <ShieldCheck size={28} /> : <GraduationCap size={28} />}
               </div>
-              <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${user.role === UserRole.ADMIN ? 'bg-emerald-950 text-emerald-400' : 'bg-blue-950 text-blue-400'}`}>
+              <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${user.role === UserRole.ADMIN ? 'bg-emerald-950 text-emerald-400' : user.role === UserRole.PONTO ? 'bg-amber-950 text-amber-400' : 'bg-blue-950 text-blue-400'}`}>
                 {user.role}
               </span>
             </div>
@@ -179,6 +179,7 @@ const SystemUsers: React.FC = () => {
                   <select className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-bold text-sm focus:border-emerald-500" value={editingUser?.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as UserRole})}>
                     <option value={UserRole.ADMIN}>Administrador</option>
                     <option value={UserRole.TEACHER}>Professor</option>
+                    <option value={UserRole.PONTO}>Ponto</option>
                   </select>
                 </div>
               </div>

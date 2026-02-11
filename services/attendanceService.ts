@@ -16,7 +16,7 @@ async function ensureAttendanceBucket() {
 }
 
 // Faz upload de foto base64 para o Supabase Storage e retorna a URL pública
-async function uploadPhoto(base64Data: string, studentCpf: string): Promise<string | undefined> {
+async function uploadPhoto(base64Data: string, studentCpf: string, suffix?: string): Promise<string | undefined> {
   try {
     await ensureAttendanceBucket();
 
@@ -25,7 +25,8 @@ async function uploadPhoto(base64Data: string, studentCpf: string): Promise<stri
     const blob = await base64Response.blob();
 
     const timestamp = Date.now();
-    const fileName = `${studentCpf}_${timestamp}.jpg`;
+    const label = suffix ? `_${suffix}` : '';
+    const fileName = `${studentCpf}_${timestamp}${label}.jpg`;
     const filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
@@ -51,6 +52,19 @@ async function uploadPhoto(base64Data: string, studentCpf: string): Promise<stri
   }
 }
 
+function mapRow(row: any): AttendanceRecord {
+  return {
+    id: row.id,
+    studentCpf: row.student_cpf,
+    timestamp: row.timestamp,
+    hour: row.hour,
+    photo: row.photo_url,
+    exitTimestamp: row.exit_timestamp || undefined,
+    exitHour: row.exit_hour || undefined,
+    exitPhoto: row.exit_photo_url || undefined,
+  };
+}
+
 export const attendanceService = {
   async getToday() {
     try {
@@ -65,13 +79,7 @@ export const attendanceService = {
         if (error.code === '42P01') return [];
         throw error;
       }
-      return (data || []).map(row => ({
-        id: row.id,
-        studentCpf: row.student_cpf,
-        timestamp: row.timestamp,
-        hour: row.hour,
-        photo: row.photo_url
-      }));
+      return (data || []).map(mapRow);
     } catch (err) {
       console.error("attendanceService.getToday failed:", err);
       return [];
@@ -91,13 +99,7 @@ export const attendanceService = {
         if (error.code === '42P01') return [];
         throw error;
       }
-      return (data || []).map(row => ({
-        id: row.id,
-        studentCpf: row.student_cpf,
-        timestamp: row.timestamp,
-        hour: row.hour,
-        photo: row.photo_url
-      }));
+      return (data || []).map(mapRow);
     } catch (err) {
       console.error("attendanceService.getByDateRange failed:", err);
       return [];
@@ -108,9 +110,9 @@ export const attendanceService = {
     // Faz upload da foto para o Storage antes de gravar o registro
     let photoUrl: string | undefined;
     if (photo && photo.startsWith('data:')) {
-      photoUrl = await uploadPhoto(photo, studentCpf);
+      photoUrl = await uploadPhoto(photo, studentCpf, 'entrada');
     } else {
-      photoUrl = photo; // Já é uma URL ou undefined
+      photoUrl = photo;
     }
 
     const { data, error } = await supabase
@@ -124,5 +126,28 @@ export const attendanceService = {
     
     if (error) throw error;
     return { ...data[0], photo_url: photoUrl };
+  },
+
+  async recordExit(recordId: string, studentCpf: string, exitHour: string, exitPhoto?: string) {
+    // Faz upload da foto de saída para o Storage
+    let exitPhotoUrl: string | undefined;
+    if (exitPhoto && exitPhoto.startsWith('data:')) {
+      exitPhotoUrl = await uploadPhoto(exitPhoto, studentCpf, 'saida');
+    } else {
+      exitPhotoUrl = exitPhoto;
+    }
+
+    const { data, error } = await supabase
+      .from('attendance_records')
+      .update({
+        exit_timestamp: new Date().toISOString(),
+        exit_hour: exitHour,
+        exit_photo_url: exitPhotoUrl
+      })
+      .eq('id', recordId)
+      .select();
+    
+    if (error) throw error;
+    return mapRow(data[0]);
   }
 };

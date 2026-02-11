@@ -1,11 +1,13 @@
 
-import React, { useState, useMemo } from 'react';
-import { BarChart3, Download, FileSpreadsheet, Users, FileText, Ban, Clock } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { BarChart3, Download, FileSpreadsheet, Users, FileText, Ban, Clock, CalendarDays, Loader2 } from 'lucide-react';
 import { Student, AttendanceRecord } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { attendanceService } from '../services/attendanceService';
 import Pagination from './Pagination';
 
 const PREVIEW_PER_PAGE = 10;
+const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 interface ReportsProps {
   students: Student[];
@@ -15,6 +17,40 @@ interface ReportsProps {
 const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
   const [reportType, setReportType] = useState('cadastro');
   const [previewPage, setPreviewPage] = useState(1);
+
+  // Filtro de mês/ano para frequência
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const [filteredAttendance, setFilteredAttendance] = useState<AttendanceRecord[]>([]);
+  const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
+
+  // Buscar dados de frequência quando mês/ano mudar e tipo for frequência
+  useEffect(() => {
+    if (reportType !== 'frequencia') return;
+
+    const fetchAttendance = async () => {
+      setIsLoadingAttendance(true);
+      try {
+        const startDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+        const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+        const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        const data = await attendanceService.getByDateRange(startDate, endDate);
+        setFilteredAttendance(data);
+      } catch (err) {
+        console.error('Erro ao buscar frequência:', err);
+        setFilteredAttendance([]);
+      } finally {
+        setIsLoadingAttendance(false);
+      }
+    };
+
+    fetchAttendance();
+  }, [reportType, selectedMonth, selectedYear]);
+
+  // Dados de frequência a usar: filtrados por mês ou do dia atual
+  const attendanceData = reportType === 'frequencia' ? filteredAttendance : attendance;
+  const currentPeriod = `${monthNames[selectedMonth]}/${selectedYear}`;
 
   const studentsByModality = [
     { name: 'Academia', total: students.filter(s => s.modality === 'Academia').length },
@@ -65,7 +101,7 @@ const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
 
     if (reportType === 'frequencia') {
       const freqHeaders = ['Nome', 'CPF', 'Data/Hora Entrada', 'Horário Entrada', 'Data/Hora Saída', 'Horário Saída'];
-      const freqRows = attendance.map(a => {
+      const freqRows = attendanceData.map(a => {
         const st = students.find(s => s.cpf === a.studentCpf);
         return [
           st?.name || 'Desconhecido',
@@ -116,7 +152,7 @@ const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
         <th>Entrada</th>
         <th>Saída</th>
       `;
-      tableRows = attendance.map((a, i) => {
+      tableRows = attendanceData.map((a, i) => {
         const st = students.find(s => s.cpf === a.studentCpf);
         return `
           <tr>
@@ -420,7 +456,7 @@ const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
       <div class="table-container">
         <div class="table-header">
           <h3>${reportTitle}</h3>
-          <span class="count">${isFrequencia ? attendance.length : filteredData.length} registro(s)</span>
+          <span class="count">${isFrequencia ? attendanceData.length : filteredData.length} registro(s)</span>
         </div>
         <table>
           <thead>
@@ -434,7 +470,7 @@ const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
 
       <div class="footer">
         <div>Academia GO — Relatório gerado automaticamente pelo sistema</div>
-        <div>Período: <strong>${currentPeriod}</strong> | Total de registros: <strong>${isFrequencia ? attendance.length : filteredData.length}</strong></div>
+        <div>Período: <strong>${currentPeriod}</strong> | Total de registros: <strong>${isFrequencia ? attendanceData.length : filteredData.length}</strong></div>
       </div>
     </body>
     </html>
@@ -460,9 +496,8 @@ const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
     return filteredData.slice(start, start + PREVIEW_PER_PAGE);
   }, [filteredData, previewPage]);
 
-  const currentDate = new Date();
-  const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-  const currentPeriod = `${monthNames[currentDate.getMonth()]}/${currentDate.getFullYear()}`;
+  // Anos disponíveis para seleção (do ano atual até 2 anos atrás)
+  const availableYears = Array.from({ length: 3 }, (_, i) => currentDate.getFullYear() - i);
 
   return (
     <div className="space-y-8">
@@ -483,6 +518,49 @@ const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
           </button>
         ))}
       </div>
+
+      {/* Filtro de Mês/Ano para Frequência */}
+      {reportType === 'frequencia' && (
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="flex items-center gap-2 text-gray-600">
+              <CalendarDays size={20} className="text-blue-600" />
+              <span className="font-black text-xs uppercase tracking-widest">Período do Relatório:</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedMonth}
+                onChange={e => { setSelectedMonth(Number(e.target.value)); setPreviewPage(1); }}
+                className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm focus:border-blue-500 outline-none transition-all"
+              >
+                {monthNames.map((name, idx) => (
+                  <option key={idx} value={idx}>{name}</option>
+                ))}
+              </select>
+              <select
+                value={selectedYear}
+                onChange={e => { setSelectedYear(Number(e.target.value)); setPreviewPage(1); }}
+                className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm focus:border-blue-500 outline-none transition-all"
+              >
+                {availableYears.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-3 ml-auto">
+              {isLoadingAttendance ? (
+                <span className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase">
+                  <Loader2 size={16} className="animate-spin" /> Buscando...
+                </span>
+              ) : (
+                <span className="text-xs font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-3 py-1.5 rounded-lg">
+                  {filteredAttendance.length} registro(s)
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Statistics Chart */}
@@ -533,7 +611,7 @@ const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
           <div className="mt-8 pt-6 border-t border-gray-100">
             <div className="flex justify-between text-sm text-gray-500 mb-2">
               <span>Registros totais</span>
-              <span className="font-bold text-gray-800">{filteredData.length}</span>
+              <span className="font-bold text-gray-800">{reportType === 'frequencia' ? attendanceData.length : filteredData.length}</span>
             </div>
             <div className="flex justify-between text-sm text-gray-500">
               <span>Período</span>
@@ -547,9 +625,55 @@ const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
           <h4 className="font-bold text-gray-800">Prévia do Relatório</h4>
-          <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded uppercase">{reportTitle}</span>
+          <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded uppercase">{reportTitle}{reportType === 'frequencia' ? ` — ${currentPeriod}` : ''}</span>
         </div>
         <div className="overflow-x-auto">
+          {reportType === 'frequencia' ? (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 text-xs uppercase font-bold">
+                  <th className="p-4">Servidor</th>
+                  <th className="p-4">CPF</th>
+                  <th className="p-4">Data</th>
+                  <th className="p-4">Entrada</th>
+                  <th className="p-4">Saída</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {isLoadingAttendance ? (
+                  <tr><td colSpan={5} className="p-10 text-center">
+                    <div className="flex items-center justify-center gap-2 text-blue-600">
+                      <Loader2 size={20} className="animate-spin" />
+                      <span className="font-bold text-xs uppercase tracking-widest">Carregando frequência...</span>
+                    </div>
+                  </td></tr>
+                ) : attendanceData.length === 0 ? (
+                  <tr><td colSpan={5} className="p-10 text-center text-gray-400 text-sm font-medium">Nenhum registro de frequência em {currentPeriod}.</td></tr>
+                ) : (
+                  attendanceData.slice((previewPage - 1) * PREVIEW_PER_PAGE, previewPage * PREVIEW_PER_PAGE).map(a => {
+                    const st = students.find(s => s.cpf === a.studentCpf);
+                    return (
+                      <tr key={a.id} className="text-sm hover:bg-gray-50 transition-colors">
+                        <td className="p-4 font-medium text-gray-800">{st?.name || 'Desconhecido'}</td>
+                        <td className="p-4 text-gray-600 font-mono text-xs">{a.studentCpf}</td>
+                        <td className="p-4 text-gray-600 text-xs">{new Date(a.timestamp).toLocaleDateString('pt-BR')}</td>
+                        <td className="p-4">
+                          <span className="text-emerald-600 font-bold">{a.hour}</span>
+                        </td>
+                        <td className="p-4">
+                          {a.exitHour ? (
+                            <span className="text-orange-600 font-bold">{a.exitHour}</span>
+                          ) : (
+                            <span className="text-gray-300 italic text-xs">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          ) : (
           <table className="w-full text-left">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 text-xs uppercase font-bold">
@@ -591,12 +715,13 @@ const Reports: React.FC<ReportsProps> = ({ students, attendance }) => {
               ))}
             </tbody>
           </table>
+          )}
         </div>
 
         <Pagination
           currentPage={previewPage}
-          totalPages={previewTotalPages}
-          totalItems={filteredData.length}
+          totalPages={reportType === 'frequencia' ? Math.ceil(attendanceData.length / PREVIEW_PER_PAGE) : previewTotalPages}
+          totalItems={reportType === 'frequencia' ? attendanceData.length : filteredData.length}
           itemsPerPage={PREVIEW_PER_PAGE}
           onPageChange={setPreviewPage}
           label="registros"

@@ -49,6 +49,9 @@ const App: React.FC = () => {
       setStudents(fetchedStudents);
       setAttendance(fetchedAttendance);
       setDocuments(fetchedDocuments);
+
+      // Limpeza automática de fotos com mais de 40 dias (executa em background)
+      attendanceService.cleanupOldPhotos().catch(() => {});
     } catch (err: any) {
       console.error("Erro crítico na carga de dados:", err);
       setLoadError("Erro ao sincronizar dados. Verifique a conexão.");

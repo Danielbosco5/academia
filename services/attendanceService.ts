@@ -149,5 +149,79 @@ export const attendanceService = {
     
     if (error) throw error;
     return mapRow(data[0]);
+  },
+
+  /**
+   * Limpa fotos com mais de 40 dias do Storage e remove as URLs do banco.
+   * Os registros de frequência (texto) são mantidos — só as fotos são apagadas.
+   */
+  async cleanupOldPhotos() {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - 40);
+      const cutoffISO = cutoffDate.toISOString();
+
+      // 1. Buscar registros antigos que ainda têm foto
+      const { data: oldRecords, error: fetchError } = await supabase
+        .from('attendance_records')
+        .select('id, photo_url, exit_photo_url, timestamp')
+        .lt('timestamp', cutoffISO)
+        .or('photo_url.neq.null,exit_photo_url.neq.null');
+
+      if (fetchError || !oldRecords || oldRecords.length === 0) return;
+
+      // Filtra apenas os que realmente têm URLs de foto
+      const recordsWithPhotos = oldRecords.filter(r => r.photo_url || r.exit_photo_url);
+      if (recordsWithPhotos.length === 0) return;
+
+      // 2. Extrair caminhos dos arquivos no Storage
+      const filePaths: string[] = [];
+      for (const rec of recordsWithPhotos) {
+        if (rec.photo_url) {
+          const path = extractStoragePath(rec.photo_url);
+          if (path) filePaths.push(path);
+        }
+        if (rec.exit_photo_url) {
+          const path = extractStoragePath(rec.exit_photo_url);
+          if (path) filePaths.push(path);
+        }
+      }
+
+      // 3. Deletar arquivos do Storage em lotes de 100
+      for (let i = 0; i < filePaths.length; i += 100) {
+        const batch = filePaths.slice(i, i + 100);
+        await supabase.storage.from('attendance-photos').remove(batch);
+      }
+
+      // 4. Limpar URLs no banco (manter o registro de frequência)
+      const ids = recordsWithPhotos.map(r => r.id);
+      for (let i = 0; i < ids.length; i += 200) {
+        const batchIds = ids.slice(i, i + 200);
+        await supabase
+          .from('attendance_records')
+          .update({ photo_url: null, exit_photo_url: null })
+          .in('id', batchIds);
+      }
+
+      console.log(`[Cleanup] ${filePaths.length} foto(s) removida(s) de ${recordsWithPhotos.length} registro(s) com mais de 40 dias.`);
+    } catch (err) {
+      console.error('[Cleanup] Erro na limpeza de fotos antigas:', err);
+    }
   }
 };
+
+/**
+ * Extrai o caminho relativo do arquivo no bucket a partir da URL pública do Supabase.
+ * Ex: "https://xxx.supabase.co/storage/v1/object/public/attendance-photos/2026-01-15/cpf_123.jpg"
+ *  -> "2026-01-15/cpf_123.jpg"
+ */
+function extractStoragePath(url: string): string | null {
+  try {
+    const marker = '/attendance-photos/';
+    const idx = url.indexOf(marker);
+    if (idx === -1) return null;
+    return decodeURIComponent(url.substring(idx + marker.length));
+  } catch {
+    return null;
+  }
+}

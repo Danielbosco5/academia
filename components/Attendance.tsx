@@ -18,54 +18,103 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<{url: string; name: string; hour: string; date: string} | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const cameraRequestRef = useRef(0);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptsRef = useRef(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+  const clearReconnectTimer = () => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+  };
+
+  const stopCamera = (stream = streamRef.current) => {
+    if (!stream) return;
+
+    if (streamRef.current === stream) {
       streamRef.current = null;
     }
+    if (videoRef.current?.srcObject === stream) {
+      videoRef.current.srcObject = null;
+    }
+    stream.getTracks().forEach(track => track.stop());
     setCameraActive(false);
   };
 
-  const setupCamera = async () => {
+  const setupCamera = async (isAutomaticRetry = false) => {
+    const requestId = ++cameraRequestRef.current;
+    clearReconnectTimer();
+    if (!isAutomaticRetry) reconnectAttemptsRef.current = 0;
+
     setCameraError(null);
     setCameraActive(false);
 
     try {
-      // Garante que qualquer stream anterior foi encerrado antes de pedir um novo
+      // Libera a câmera atual antes de solicitar uma nova transmissão.
       stopCamera();
-
-      // Aguarda um pequeno delay para o hardware liberar (evita NotReadableError em alguns sistemas)
-      await new Promise(resolve => setTimeout(resolve, 100));
 
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           width: { ideal: 640 }, 
-          height: { ideal: 480 }, 
-          facingMode: 'user' 
+          height: { ideal: 480 }
         },
         audio: false 
       });
-      
-      streamRef.current = mediaStream;
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        // Tenta dar play explicitamente
-        try {
-          await videoRef.current.play();
-          setCameraActive(true);
-          setCameraError(null);
-        } catch (playErr) {
-          console.error("Erro ao dar play no vídeo:", playErr);
-          setCameraError("Falha ao iniciar stream de vídeo. Tente recarregar a página.");
-        }
+
+      // Uma solicitação anterior pode terminar depois de uma tentativa mais nova.
+      // Nesse caso ela não pode assumir a câmera nem deixar o hardware em uso.
+      if (requestId !== cameraRequestRef.current || !videoRef.current) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        return;
       }
+
+      streamRef.current = mediaStream;
+
+      const handleTrackEnded = () => {
+        if (streamRef.current !== mediaStream) return;
+
+        streamRef.current = null;
+        if (videoRef.current?.srcObject === mediaStream) {
+          videoRef.current.srcObject = null;
+        }
+        setCameraActive(false);
+
+        if (reconnectAttemptsRef.current >= 3) {
+          setCameraError("A câmera USB foi desconectada. Reconecte o cabo e clique em Tentar Novamente.");
+          return;
+        }
+
+        reconnectAttemptsRef.current += 1;
+        setCameraError("Conexão da câmera interrompida. Tentando reconectar...");
+        reconnectTimeoutRef.current = setTimeout(() => {
+          setupCamera(true);
+        }, 1500);
+      };
+
+      mediaStream.getVideoTracks().forEach(track => {
+        track.addEventListener('ended', handleTrackEnded, { once: true });
+      });
+
+      videoRef.current.srcObject = mediaStream;
+      await videoRef.current.play();
+
+      if (requestId !== cameraRequestRef.current || streamRef.current !== mediaStream) {
+        stopCamera(mediaStream);
+        return;
+      }
+
+      reconnectAttemptsRef.current = 0;
+      setCameraActive(true);
+      setCameraError(null);
     } catch (err: any) {
+      if (requestId !== cameraRequestRef.current) return;
+
       console.error("Erro detalhado da câmera:", err);
+      stopCamera();
       setCameraActive(false);
       
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
@@ -82,7 +131,12 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
 
   useEffect(() => {
     setupCamera();
-    return () => stopCamera();
+    return () => {
+      // Invalida inicializações pendentes antes de encerrar a transmissão atual.
+      cameraRequestRef.current += 1;
+      clearReconnectTimer();
+      stopCamera();
+    };
   }, []);
 
   const capturePhoto = (): string | undefined => {
@@ -182,7 +236,7 @@ const Attendance: React.FC<AttendanceProps> = ({ students, attendance, onAddAtte
                   <h4 className="font-black uppercase text-xs tracking-widest mb-2 text-red-500">Erro de Hardware</h4>
                   <p className="text-[11px] font-bold text-slate-400 mb-6 max-w-xs uppercase leading-relaxed">{cameraError}</p>
                   <button 
-                    onClick={setupCamera}
+                    onClick={() => setupCamera()}
                     className="flex items-center gap-2 px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-red-900/40 active:scale-95"
                   >
                     <RefreshCw size={14} />

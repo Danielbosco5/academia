@@ -190,17 +190,21 @@ export const attendanceService = {
       // 3. Deletar arquivos do Storage em lotes de 100
       for (let i = 0; i < filePaths.length; i += 100) {
         const batch = filePaths.slice(i, i + 100);
-        await supabase.storage.from('attendance-photos').remove(batch);
+        const { error: removeError } = await supabase.storage
+          .from('attendance-photos')
+          .remove(batch);
+        if (removeError) throw removeError;
       }
 
       // 4. Limpar URLs no banco (manter o registro de frequência)
       const ids = recordsWithPhotos.map(r => r.id);
       for (let i = 0; i < ids.length; i += 200) {
         const batchIds = ids.slice(i, i + 200);
-        await supabase
+        const { error: updateError } = await supabase
           .from('attendance_records')
           .update({ photo_url: null, exit_photo_url: null })
           .in('id', batchIds);
+        if (updateError) throw updateError;
       }
 
       console.log(`[Cleanup] ${filePaths.length} foto(s) removida(s) de ${recordsWithPhotos.length} registro(s) com mais de 40 dias.`);

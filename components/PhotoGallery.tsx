@@ -50,11 +50,15 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ students }) => {
   const recordsWithPhotos = useMemo(() => {
     let filtered = records.filter(r => r.photo && !r.photo.startsWith('data:'));
     if (cpfFilter.trim()) {
-      const cleanCpf = cpfFilter.replace(/\D/g, '');
-      filtered = filtered.filter(r => r.studentCpf.includes(cleanCpf));
+      const query = cpfFilter.trim().toLowerCase();
+      const cleanCpf = query.replace(/\D/g, '');
+      filtered = filtered.filter(record => {
+        const studentName = students.find(s => s.cpf === record.studentCpf)?.name.toLowerCase() || '';
+        return studentName.includes(query) || (cleanCpf.length > 0 && record.studentCpf.includes(cleanCpf));
+      });
     }
     return filtered;
-  }, [records, cpfFilter]);
+  }, [records, cpfFilter, students]);
 
   const totalPages = Math.ceil(recordsWithPhotos.length / ITEMS_PER_PAGE);
   const paginatedRecords = recordsWithPhotos.slice(
